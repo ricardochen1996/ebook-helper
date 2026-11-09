@@ -50,6 +50,8 @@ class MainActivity : AppCompatActivity() {
 
         binding.rvBooks.layoutManager = LinearLayoutManager(this)
         binding.rvBooks.adapter = adapter
+        // 墨水屏上列表动画只会带来多余刷新。
+        binding.rvBooks.itemAnimator = null
 
         binding.btnSettings.setOnClickListener {
             startActivity(Intent(this, SettingsActivity::class.java))

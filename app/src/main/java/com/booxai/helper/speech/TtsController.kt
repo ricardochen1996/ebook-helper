@@ -148,6 +148,10 @@ class TtsController(context: Context) {
         _state.value = State.READY
         lastError = ""
         flushPending()
+        // 只在设置页初始化、还没有朗读时，也要有兜底释放，避免 TTS 常驻。
+        if (pendingUtterances.get() == 0) {
+            scheduleIdleShutdown()
+        }
     }
 
     /**

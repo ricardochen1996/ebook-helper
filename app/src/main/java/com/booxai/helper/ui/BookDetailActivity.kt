@@ -35,6 +35,7 @@ class BookDetailActivity : AppCompatActivity() {
         }
         binding.rvSessions.layoutManager = LinearLayoutManager(this)
         binding.rvSessions.adapter = adapter
+        binding.rvSessions.itemAnimator = null
         binding.btnBack.setOnClickListener { finish() }
 
         lifecycleScope.launch {
