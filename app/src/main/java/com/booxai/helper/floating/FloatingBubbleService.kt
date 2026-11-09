@@ -265,7 +265,9 @@ class FloatingBubbleService : Service() {
         }
         setBubbleVisible(false)
         startActivity(Intent(this, PanelActivity::class.java).apply {
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+            // 独立任务 + 独立 taskAffinity：关闭面板时直接回到微信读书，
+            // 不会把 App 自己的 MainActivity 带到前台。
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_MULTIPLE_TASK)
             putExtra(PanelActivity.EXTRA_PAGE_TEXT, capture.pageText)
             putExtra(PanelActivity.EXTRA_BOOK_TITLE, capture.bookTitle)
         })

@@ -31,6 +31,7 @@
             android:excludeFromRecents="true"
             android:exported="false"
             android:launchMode="singleTask"
+            android:taskAffinity="com.booxai.helper.panel"
             android:theme="@style/Theme.ReadAsk.Panel"
             android:windowSoftInputMode="adjustResize" />
 

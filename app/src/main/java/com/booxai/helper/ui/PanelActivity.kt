@@ -5,6 +5,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.os.SystemClock
+import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
@@ -71,6 +72,14 @@ class PanelActivity : AppCompatActivity() {
         binding = ActivityPanelBinding.inflate(layoutInflater)
         setContentView(binding.root)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        // 浮在微信读书上方的小窗，而不是全屏 Activity。
+        val metrics = resources.displayMetrics
+        window.setLayout(
+            (metrics.widthPixels * 0.88f).toInt(),
+            (metrics.heightPixels * 0.72f).toInt()
+        )
+        window.setGravity(Gravity.CENTER)
+        setFinishOnTouchOutside(true)
         FloatingBubbleService.setPanelOpen(true)
 
         pageText = intent.getStringExtra(EXTRA_PAGE_TEXT)
@@ -88,7 +97,7 @@ class PanelActivity : AppCompatActivity() {
         updateTtsButton()
         updatePagePreview()
 
-        binding.btnClose.setOnClickListener { finish() }
+        binding.btnClose.setOnClickListener { closePanel() }
         binding.btnEditTitle.setOnClickListener { showTitleDialog() }
         binding.btnAsk.setOnClickListener { sendQuestion() }
         binding.btnStop.setOnClickListener { stopStreaming() }
@@ -105,7 +114,7 @@ class PanelActivity : AppCompatActivity() {
 
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
-                finish()
+                closePanel()
             }
         })
 
@@ -118,6 +127,18 @@ class PanelActivity : AppCompatActivity() {
                     sendQuestion()
                 }
             }
+        }
+    }
+
+    /**
+     * 悬浮球路径下这个 Activity 是独立任务；关闭时连任务一起移除，
+     * 这样会直接回到微信读书，而不是 App 首页。
+     */
+    private fun closePanel() {
+        if (isTaskRoot) {
+            finishAndRemoveTask()
+        } else {
+            finish()
         }
     }
 
