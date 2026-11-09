@@ -7,6 +7,7 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
 import android.graphics.PixelFormat
 import android.graphics.Rect
 import android.os.Handler
@@ -28,6 +29,8 @@ import com.booxai.helper.accessibility.ReadingState
 import com.booxai.helper.accessibility.WeReadAccessibilityService
 import com.booxai.helper.ui.MainActivity
 import com.booxai.helper.ui.PanelActivity
+import java.io.File
+import java.io.FileOutputStream
 
 class FloatingBubbleService : Service() {
 
@@ -124,8 +127,8 @@ class FloatingBubbleService : Service() {
         val defaultY = (bounds.height() / 2).coerceAtLeast(dp(80))
 
         val view = TextView(this).apply {
-            text = "AI"
-            textSize = 16f
+            text = "伴读"
+            textSize = 14f
             setTextColor(ContextCompat.getColor(this@FloatingBubbleService, R.color.ink))
             gravity = Gravity.CENTER
             background = ContextCompat.getDrawable(this@FloatingBubbleService, R.drawable.bg_bubble)
@@ -244,6 +247,10 @@ class FloatingBubbleService : Service() {
             toast(getString(R.string.toast_no_a11y))
             return
         }
+        if (!service.isWeReadForeground()) {
+            toast(getString(R.string.toast_not_weread))
+            return
+        }
         // 页面内容变化时服务已经缓存了正文；2 秒内直接复用，避免点击时
         // 再同步遍历整棵无障碍树，把面板打开拖慢。
         val now = System.currentTimeMillis()
@@ -259,18 +266,78 @@ class FloatingBubbleService : Service() {
                 null
             }
         }
-        if (capture == null || capture.pageText.isBlank()) {
-            toast(getString(R.string.toast_not_weread))
-            return
-        }
+
+        // 先隐藏悬浮球，再截屏，避免把球本身截进去。
         setBubbleVisible(false)
-        startActivity(Intent(this, PanelActivity::class.java).apply {
-            // 独立任务 + 独立 taskAffinity：关闭面板时直接回到微信读书，
-            // 不会把 App 自己的 MainActivity 带到前台。
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_MULTIPLE_TASK)
-            putExtra(PanelActivity.EXTRA_PAGE_TEXT, capture.pageText)
-            putExtra(PanelActivity.EXTRA_BOOK_TITLE, capture.bookTitle)
-        })
+        mainHandler.postDelayed({
+            service.takeScreenshot { bitmap ->
+                val screenshotPath = bitmap?.let { saveScreenshot(it) }
+                mainHandler.post {
+                    if ((capture == null || capture.pageText.isBlank()) && screenshotPath == null) {
+                        // 既没有文字也没有截图，说明当前不是可读页面。
+                        setBubbleVisible(true)
+                        toast(getString(R.string.toast_not_weread))
+                        return@post
+                    }
+                    openPanel(capture, screenshotPath)
+                }
+            }
+        }, SCREENSHOT_DELAY_MS)
+    }
+
+    private fun openPanel(capture: CaptureResult?, screenshotPath: String?) {
+        try {
+            startActivity(Intent(this, PanelActivity::class.java).apply {
+                // 独立任务 + 独立 taskAffinity：关闭面板时直接回到微信读书，
+                // 不会把 App 自己的 MainActivity 带到前台。
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_MULTIPLE_TASK)
+                putExtra(PanelActivity.EXTRA_PAGE_TEXT, capture?.pageText.orEmpty())
+                putExtra(
+                    PanelActivity.EXTRA_BOOK_TITLE,
+                    capture?.bookTitle ?: ReadingState.lastBookTitle
+                )
+                putExtra(PanelActivity.EXTRA_SCREENSHOT_PATH, screenshotPath)
+            })
+        } catch (_: Exception) {
+            setBubbleVisible(true)
+            toast(getString(R.string.toast_not_weread))
+        }
+    }
+
+    private fun saveScreenshot(bitmap: Bitmap): String? {
+        return try {
+            val maxDimension = 1400
+            val largest = maxOf(bitmap.width, bitmap.height)
+            val scaled = if (largest > maxDimension) {
+                val ratio = maxDimension.toFloat() / largest
+                Bitmap.createScaledBitmap(
+                    bitmap,
+                    (bitmap.width * ratio).toInt().coerceAtLeast(1),
+                    (bitmap.height * ratio).toInt().coerceAtLeast(1),
+                    true
+                )
+            } else {
+                bitmap
+            }
+            val dir = cacheDir
+            dir.listFiles { file ->
+                file.name.startsWith("page_") &&
+                    System.currentTimeMillis() - file.lastModified() > SCREENSHOT_TTL_MS
+            }?.forEach { it.delete() }
+            val file = File(dir, "page_${System.currentTimeMillis()}.jpg")
+            FileOutputStream(file).use { out ->
+                scaled.compress(Bitmap.CompressFormat.JPEG, 80, out)
+            }
+            if (scaled !== bitmap) scaled.recycle()
+            bitmap.recycle()
+            file.absolutePath
+        } catch (_: Exception) {
+            try {
+                bitmap.recycle()
+            } catch (_: Exception) {
+            }
+            null
+        }
     }
 
     private fun snapToEdge() {
@@ -319,6 +386,8 @@ class FloatingBubbleService : Service() {
         private const val KEY_X = "bubble_x"
         private const val KEY_Y = "bubble_y"
         private const val DRAG_UPDATE_INTERVAL_MS = 40L
+        private const val SCREENSHOT_DELAY_MS = 150L
+        private const val SCREENSHOT_TTL_MS = 60 * 60 * 1000L
 
         @Volatile
         private var instance: FloatingBubbleService? = null

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- 与正式包并存时便于区分 -->
-    <string name="app_name">读问 AI (debug)</string>
+    <string name="app_name">伴读 (debug)</string>
 </resources>

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">读问 AI</string>
-    <string name="accessibility_label">读问 AI 阅读助手</string>
+    <string name="app_name">伴读</string>
+    <string name="accessibility_label">伴读阅读助手</string>
     <string name="accessibility_description">读取微信读书当前页的文字，回答你的问题。只在点击悬浮球时读取，不会保存或上传未经你操作的内容。</string>
 
     <string name="setup_title">使用前准备</string>
@@ -36,7 +36,12 @@
     <string name="panel_close">关闭</string>
     <string name="panel_edit">改</string>
     <string name="panel_page_label">当前书页</string>
-    <string name="panel_page_empty">未抓取到书页文字。请回到微信读书翻页后重新点悬浮球。</string>
+    <string name="panel_page_empty">当前页没有可提取的文字。图片/图表页可勾选下方「附带截图」让 AI 识别。</string>
+    <string name="panel_attach_screenshot">附带当前页截图（图片/图表识别）</string>
+    <string name="panel_screenshot_ready">已截取当前页 · 需视觉模型</string>
+    <string name="panel_screenshot_missing">未截取到当前页，仅使用文字</string>
+    <string name="panel_screenshot_retry">当前模型不支持截图，改用文字重试…</string>
+    <string name="panel_screenshot_read_fail">读取截图失败，本次仅发送文字</string>
     <string name="panel_expand">展开</string>
     <string name="panel_collapse">收起</string>
     <string name="panel_question_hint">输入你的问题…</string>
@@ -62,7 +67,7 @@
     <string name="panel_capture_empty">没有读到微信读书的页面。请确认微信读书在前台，并已开启无障碍服务。</string>
     <string name="panel_ask_first">在下面输入问题，AI 会结合当前书页回答并朗读。</string>
     <string name="panel_you">你</string>
-    <string name="panel_ai">AI</string>
+    <string name="panel_ai">伴读</string>
     <string name="panel_interrupted">（已停止）</string>
     <string name="panel_error">出错：%1$s</string>
     <string name="panel_need_config">请先在设置里配置 AI 接口。</string>
@@ -110,7 +115,7 @@
     <string name="settings_tts_missing">中文语音不可用，请安装/切换 TTS 引擎</string>
     <string name="settings_tts_init">正在初始化…</string>
     <string name="settings_tts_idle">朗读未启动，点「试听」启用</string>
-    <string name="settings_tts_sample">你好，我是读问 AI，正在为你朗读。</string>
+    <string name="settings_tts_sample">你好，我是伴读，正在为你朗读。</string>
 
     <string name="settings_section_reading">阅读与权限</string>
     <string name="settings_a11y_status">无障碍服务：%1$s</string>
@@ -133,14 +138,14 @@
     <string name="settings_clear_keys_confirm">确定清除已保存的 API Key？</string>
     <string name="settings_cleared">已清除</string>
     <string name="settings_section_about">关于</string>
-    <string name="settings_about_text">读问 AI 0.1.0\n个人自用工具：不提供后端，不收集数据。书页文字只在你点击提问时发送到你配置的 AI 接口。请遵守微信读书的服务条款，仅用于个人阅读辅助。</string>
+    <string name="settings_about_text">伴读 0.1.1\n个人自用工具：不提供后端，不收集数据。只在你点击提问时发送当前页文字/截图到你配置的 AI 接口。请遵守微信读书的服务条款，仅用于个人阅读辅助。</string>
 
     <string name="notification_channel">悬浮球</string>
-    <string name="notification_title">读问 AI 正在运行</string>
-    <string name="notification_text">点悬浮球向 AI 提问</string>
+    <string name="notification_title">伴读正在运行</string>
+    <string name="notification_text">点悬浮球向伴读提问</string>
     <string name="notification_stop">停止</string>
     <string name="toast_no_overlay">请先授予悬浮窗权限</string>
-    <string name="toast_no_a11y">请先开启读问 AI 的无障碍服务</string>
+    <string name="toast_no_a11y">请先开启伴读的无障碍服务</string>
     <string name="toast_not_weread">请先打开微信读书</string>
     <string name="toast_bubble_started">悬浮球已启动</string>
     <string name="toast_need_config">请先在 App 设置里配置 AI 接口</string>

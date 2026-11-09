@@ -28,7 +28,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="2dp"
-                android:text="微信读书 · AI 伴读"
+                android:text="微信读书 · 伴读"
                 style="@style/Text.ReadAsk.Muted" />
         </LinearLayout>
 

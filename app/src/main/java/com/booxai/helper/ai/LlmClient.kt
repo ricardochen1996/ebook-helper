@@ -2,7 +2,16 @@ package com.booxai.helper.ai
 
 import kotlinx.coroutines.flow.Flow
 
-data class LlmMessage(val role: String, val content: String)
+data class LlmImage(
+    val base64: String,
+    val mediaType: String = "image/jpeg",
+)
+
+data class LlmMessage(
+    val role: String,
+    val content: String,
+    val image: LlmImage? = null,
+)
 
 data class LlmRequest(
     val model: String,

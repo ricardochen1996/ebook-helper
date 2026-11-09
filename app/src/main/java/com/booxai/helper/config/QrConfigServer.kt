@@ -200,7 +200,7 @@ class QrConfigServer(
         val openaiSelected = if (currentProtocol == "anthropic") "" else " selected"
         val anthropicSelected = if (currentProtocol == "anthropic") " selected" else ""
         val body = """
-            <h1>读问 AI · API 配置</h1>
+            <h1>伴读 · API 配置</h1>
             <p class="hint">在手机上填写后，电子书会自动保存。手机和电子书需要连接同一个 Wi-Fi。</p>
             $errorHtml
             <form method="post" action="/save?token=$token" autocomplete="off">
@@ -223,7 +223,7 @@ class QrConfigServer(
             </form>
             <p class="note">提交后本页可以关闭，电子书上的二维码页面会自动返回。此页面只在配置期间有效。</p>
         """.trimIndent()
-        return page("读问 AI 配置", body)
+        return page("伴读 配置", body)
     }
 
     private fun successHtml(): String = page(

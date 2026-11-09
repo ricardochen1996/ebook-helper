@@ -5,6 +5,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.os.SystemClock
+import android.util.Base64
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
@@ -24,6 +25,7 @@ import com.booxai.helper.BuildConfig
 import com.booxai.helper.R
 import com.booxai.helper.accessibility.WeReadExtractor
 import com.booxai.helper.ai.LlmEvent
+import com.booxai.helper.ai.LlmImage
 import com.booxai.helper.ai.LlmMessage
 import com.booxai.helper.ai.LlmRequest
 import com.booxai.helper.ai.PromptBuilder
@@ -40,12 +42,16 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.File
 
 class PanelActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityPanelBinding
 
     private var pageText: String? = null
+    private var pageTextProvided = false
+    private var screenshotPath: String? = null
+    private var screenshotAvailable = false
     private var bookTitle: String = ""
     private var bookId: Long = 0L
     private var sessionId: Long = -1L
@@ -75,14 +81,20 @@ class PanelActivity : AppCompatActivity() {
         // 浮在微信读书上方的小窗，而不是全屏 Activity。
         val metrics = resources.displayMetrics
         window.setLayout(
-            (metrics.widthPixels * 0.88f).toInt(),
-            (metrics.heightPixels * 0.72f).toInt()
+            (metrics.widthPixels * 0.78f).toInt(),
+            (metrics.heightPixels * 0.62f).toInt()
         )
         window.setGravity(Gravity.CENTER)
         setFinishOnTouchOutside(true)
         FloatingBubbleService.setPanelOpen(true)
 
+        pageTextProvided = intent.hasExtra(EXTRA_PAGE_TEXT)
         pageText = intent.getStringExtra(EXTRA_PAGE_TEXT)
+        screenshotPath = intent.getStringExtra(EXTRA_SCREENSHOT_PATH)
+        screenshotAvailable = screenshotPath?.let { path ->
+            val file = File(path)
+            file.isFile && file.length() > 0
+        } == true
         bookTitle = intent.getStringExtra(EXTRA_BOOK_TITLE).orEmpty()
         sessionId = intent.getLongExtra(EXTRA_SESSION_ID, -1L)
         if (bookTitle.isBlank()) {
@@ -96,6 +108,7 @@ class PanelActivity : AppCompatActivity() {
         binding.btnStop.isEnabled = false
         updateTtsButton()
         updatePagePreview()
+        updateScreenshotUi()
 
         binding.btnClose.setOnClickListener { closePanel() }
         binding.btnEditTitle.setOnClickListener { showTitleDialog() }
@@ -150,6 +163,13 @@ class PanelActivity : AppCompatActivity() {
         streamJob = null
         App.tts.stop()
         FloatingBubbleService.setPanelOpen(false)
+        screenshotPath?.let {
+            try {
+                File(it).delete()
+            } catch (_: Exception) {
+            }
+        }
+        screenshotPath = null
         super.onDestroy()
     }
 
@@ -163,7 +183,7 @@ class PanelActivity : AppCompatActivity() {
                     bookTitle = book.title
                     App.settings.lastBookTitle = book.title
                 }
-                if (pageText.isNullOrBlank()) {
+                if (!pageTextProvided && pageText.isNullOrBlank()) {
                     pageText = App.repository.lastPageText(sessionId)
                 }
             } else {
@@ -254,6 +274,7 @@ class PanelActivity : AppCompatActivity() {
         val session = sessionId
         val book = bookTitle
         val page = pageText
+        val attachScreenshot = binding.cbScreenshot.isChecked && screenshotAvailable
         streamJob = lifecycleScope.launch {
             var assistantView: TextView? = null
             val full = StringBuilder()
@@ -283,61 +304,85 @@ class PanelActivity : AppCompatActivity() {
                 )
                 scrollToBottom()
 
-                val system = PromptBuilder.system(
-                    book.ifBlank { getString(R.string.book_unknown) },
-                    page,
-                    App.settings.extraPrompt
-                )
-                val request = LlmRequest(
-                    model = config.model,
-                    system = system,
-                    messages = PromptBuilder.messages(
-                        previous.map { LlmMessage(it.role, it.content) },
-                        question
-                    ),
-                    maxTokens = App.settings.maxTokens,
-                    temperature = App.settings.temperature.toDouble(),
-                )
-
-                val segmenter = SentenceSegmenter()
-                var firstSentence = true
-                var lastUiUpdate = 0L
+                val image = if (attachScreenshot) loadScreenshotImage() else null
+                if (attachScreenshot && image == null) {
+                    binding.tvScreenshotStatus.text =
+                        getString(R.string.panel_screenshot_read_fail)
+                }
+                val history = previous.map { LlmMessage(it.role, it.content) }
+                var useImage = image != null
                 val start = SystemClock.uptimeMillis()
-
-                App.router.client(config).stream(request).collect { event ->
-                    when (event) {
-                        is LlmEvent.Text -> {
-                            full.append(event.delta)
-                            if (App.settings.ttsEnabled) {
-                                segmenter.append(event.delta).forEach { sentence ->
-                                    App.tts.speak(sentence, flush = firstSentence)
-                                    firstSentence = false
+                while (true) {
+                    val system = PromptBuilder.system(
+                        book.ifBlank { getString(R.string.book_unknown) },
+                        page,
+                        App.settings.extraPrompt,
+                        hasScreenshot = useImage
+                    )
+                    val request = LlmRequest(
+                        model = config.model,
+                        system = system,
+                        messages = PromptBuilder.messages(
+                            history,
+                            question,
+                            if (useImage) image else null
+                        ),
+                        maxTokens = App.settings.maxTokens,
+                        temperature = App.settings.temperature.toDouble(),
+                    )
+                    val segmenter = SentenceSegmenter()
+                    var firstSentence = true
+                    var lastUiUpdate = 0L
+                    var receivedText = false
+                    var attemptError: String? = null
+                    full.setLength(0)
+                    assistantView?.text = ""
+                    App.router.client(config).stream(request).collect { event ->
+                        when (event) {
+                            is LlmEvent.Text -> {
+                                receivedText = true
+                                full.append(event.delta)
+                                if (App.settings.ttsEnabled) {
+                                    segmenter.append(event.delta).forEach { sentence ->
+                                        App.tts.speak(sentence, flush = firstSentence)
+                                        firstSentence = false
+                                    }
+                                }
+                                val now = SystemClock.uptimeMillis()
+                                if (now - lastUiUpdate >= STREAM_UI_INTERVAL_MS) {
+                                    assistantView?.text = full.toString()
+                                    lastUiUpdate = now
+                                    scrollToBottom()
                                 }
                             }
-                            val now = SystemClock.uptimeMillis()
-                            if (now - lastUiUpdate >= STREAM_UI_INTERVAL_MS) {
-                                assistantView?.text = full.toString()
-                                lastUiUpdate = now
-                                scrollToBottom()
+
+                            is LlmEvent.Error -> {
+                                attemptError = event.message
+                                android.util.Log.w(
+                                    "ReadAskPanel",
+                                    "LLM error: ${event.message}",
+                                    event.cause
+                                )
                             }
-                        }
 
-                        is LlmEvent.Error -> {
-                            failed = true
-                            errorMessage = event.message
-                            android.util.Log.w(
-                                "ReadAskPanel",
-                                "LLM error: ${event.message}",
-                                event.cause
-                            )
+                            LlmEvent.Done -> Unit
                         }
-
-                        LlmEvent.Done -> Unit
                     }
-                }
-
-                if (App.settings.ttsEnabled) {
-                    segmenter.flush()?.let { App.tts.speak(it) }
+                    if (attemptError == null) {
+                        if (App.settings.ttsEnabled) {
+                            segmenter.flush()?.let { App.tts.speak(it) }
+                        }
+                        break
+                    }
+                    // 模型不支持图片时自动回退纯文字，避免图片页完全无法提问。
+                    if (useImage && !receivedText) {
+                        useImage = false
+                        binding.tvStatus.text = getString(R.string.panel_screenshot_retry)
+                        continue
+                    }
+                    failed = true
+                    errorMessage = attemptError
+                    break
                 }
                 val finalText = full.toString().trim()
                 assistantView?.text = if (finalText.isNotEmpty()) {
@@ -426,6 +471,23 @@ class PanelActivity : AppCompatActivity() {
         }
     }
 
+    private suspend fun loadScreenshotImage(): LlmImage? = withContext(Dispatchers.IO) {
+        val path = screenshotPath ?: return@withContext null
+        try {
+            val bytes = File(path).readBytes()
+            if (bytes.isEmpty()) {
+                null
+            } else {
+                LlmImage(
+                    base64 = Base64.encodeToString(bytes, Base64.NO_WRAP),
+                    mediaType = "image/jpeg"
+                )
+            }
+        } catch (_: Exception) {
+            null
+        }
+    }
+
     private fun stopStreaming() {
         streamJob?.cancel()
         streamJob = null
@@ -508,6 +570,18 @@ class PanelActivity : AppCompatActivity() {
             binding.tvPageToggle.text = getString(
                 if (expandedPage) R.string.panel_collapse else R.string.panel_expand
             )
+        }
+    }
+
+    private fun updateScreenshotUi() {
+        binding.cbScreenshot.visibility = if (screenshotAvailable) View.VISIBLE else View.GONE
+        binding.cbScreenshot.isChecked = screenshotAvailable &&
+            (pageText.isNullOrBlank() || (pageText?.length ?: 0) < 120)
+        binding.tvScreenshotStatus.visibility = View.VISIBLE
+        binding.tvScreenshotStatus.text = if (screenshotAvailable) {
+            getString(R.string.panel_screenshot_ready)
+        } else {
+            getString(R.string.panel_screenshot_missing)
         }
     }
 
@@ -642,6 +716,7 @@ class PanelActivity : AppCompatActivity() {
         const val EXTRA_BOOK_TITLE = "book_title"
         const val EXTRA_SESSION_ID = "session_id"
         const val EXTRA_DEBUG_QUESTION = "debug_question"
+        const val EXTRA_SCREENSHOT_PATH = "screenshot_path"
 
         // 墨水屏刷新慢，流式文本 600ms 更新一次足够，也能明显减少整段 TextView 重排。
         private const val STREAM_UI_INTERVAL_MS = 600L

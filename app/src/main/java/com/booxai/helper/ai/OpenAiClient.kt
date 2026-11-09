@@ -42,7 +42,30 @@ class OpenAiClient(
                     JSONArray().apply {
                         put(JSONObject().put("role", "system").put("content", request.system))
                         request.messages.forEach { message ->
-                            put(JSONObject().put("role", message.role).put("content", message.content))
+                            val image = message.image
+                            val content: Any = if (image != null) {
+                                JSONArray().apply {
+                                    put(
+                                        JSONObject()
+                                            .put("type", "text")
+                                            .put("text", message.content)
+                                    )
+                                    put(
+                                        JSONObject()
+                                            .put("type", "image_url")
+                                            .put(
+                                                "image_url",
+                                                JSONObject().put(
+                                                    "url",
+                                                    "data:${image.mediaType};base64,${image.base64}"
+                                                )
+                                            )
+                                    )
+                                }
+                            } else {
+                                message.content
+                            }
+                            put(JSONObject().put("role", message.role).put("content", content))
                         }
                     }
                 )

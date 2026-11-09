@@ -42,7 +42,30 @@ class AnthropicClient(
                     "messages",
                     JSONArray().apply {
                         request.messages.forEach { message ->
-                            put(JSONObject().put("role", message.role).put("content", message.content))
+                            val image = message.image
+                            val content: Any = if (image != null) {
+                                JSONArray().apply {
+                                    put(
+                                        JSONObject()
+                                            .put("type", "image")
+                                            .put(
+                                                "source",
+                                                JSONObject()
+                                                    .put("type", "base64")
+                                                    .put("media_type", image.mediaType)
+                                                    .put("data", image.base64)
+                                            )
+                                    )
+                                    put(
+                                        JSONObject()
+                                            .put("type", "text")
+                                            .put("text", message.content)
+                                    )
+                                }
+                            } else {
+                                message.content
+                            }
+                            put(JSONObject().put("role", message.role).put("content", content))
                         }
                     }
                 )

@@ -4,10 +4,13 @@ import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.AccessibilityServiceInfo
 import android.content.ComponentName
 import android.content.Context
+import android.graphics.Bitmap
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
 import android.util.Log
+import android.view.Display
 import android.view.accessibility.AccessibilityEvent
 import com.booxai.helper.App
 
@@ -107,6 +110,54 @@ class WeReadAccessibilityService : AccessibilityService() {
         ReadingState.lastPageText = page
         ReadingState.lastCaptureAt = System.currentTimeMillis()
         return CaptureResult(page, title, System.currentTimeMillis())
+    }
+
+    fun isWeReadForeground(): Boolean {
+        val root = rootInActiveWindow ?: return false
+        return root.packageName?.toString() == WeReadExtractor.PKG
+    }
+
+    /**
+     * 截图当前屏幕，用于图片/图表/扫描页。API 30 起无障碍服务可直接截图，
+     * 不需要 MediaProjection 授权。
+     */
+    fun takeScreenshot(callback: (Bitmap?) -> Unit) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
+            callback(null)
+            return
+        }
+        try {
+            takeScreenshot(
+                Display.DEFAULT_DISPLAY,
+                mainExecutor,
+                object : AccessibilityService.TakeScreenshotCallback {
+                    override fun onSuccess(screenshot: AccessibilityService.ScreenshotResult) {
+                        var bitmap: Bitmap? = null
+                        try {
+                            val hardware = Bitmap.wrapHardwareBuffer(
+                                screenshot.hardwareBuffer,
+                                screenshot.colorSpace
+                            )
+                            bitmap = hardware?.copy(Bitmap.Config.ARGB_8888, false)
+                            hardware?.recycle()
+                        } catch (_: Exception) {
+                        } finally {
+                            try {
+                                screenshot.hardwareBuffer.close()
+                            } catch (_: Exception) {
+                            }
+                        }
+                        callback(bitmap)
+                    }
+
+                    override fun onFailure(errorCode: Int) {
+                        callback(null)
+                    }
+                }
+            )
+        } catch (_: Exception) {
+            callback(null)
+        }
     }
 
     override fun onInterrupt() = Unit
