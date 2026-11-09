@@ -11,6 +11,7 @@ import com.booxai.helper.util.TimeFormat
 
 class SessionAdapter(
     private val onClick: (SessionSummary) -> Unit,
+    private val onDelete: (SessionSummary) -> Unit,
 ) : ListAdapter<SessionSummary, SessionAdapter.Holder>(DIFF) {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): Holder {
@@ -26,6 +27,7 @@ class SessionAdapter(
             ?: "（无提问）"
         holder.binding.tvSessionCount.text = "${item.messageCount} 条消息"
         holder.binding.root.setOnClickListener { onClick(item) }
+        holder.binding.btnDeleteSession.setOnClickListener { onDelete(item) }
     }
 
     class Holder(val binding: ItemSessionBinding) : RecyclerView.ViewHolder(binding.root)

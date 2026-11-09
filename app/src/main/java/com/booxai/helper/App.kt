@@ -6,6 +6,7 @@ import com.booxai.helper.data.AppDatabase
 import com.booxai.helper.data.ChatRepository
 import com.booxai.helper.data.SecretStore
 import com.booxai.helper.data.SettingsStore
+import com.booxai.helper.data.ScreenshotStore
 import com.booxai.helper.speech.TtsController
 
 class App : Application() {
@@ -16,6 +17,7 @@ class App : Application() {
         db = AppDatabase.get(this)
         settings = SettingsStore(this)
         secrets = SecretStore(this)
+        ScreenshotStore.init(this)
         repository = ChatRepository(db, settings)
         router = ProviderRouter(settings, secrets)
         // TTS 引擎按需初始化：避免无障碍服务/悬浮球进程一启动就常驻绑定

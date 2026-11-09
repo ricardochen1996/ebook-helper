@@ -36,6 +36,12 @@
             android:windowSoftInputMode="adjustResize" />
 
         <activity
+            android:name=".ui.SessionChatActivity"
+            android:exported="false"
+            android:theme="@style/Theme.ReadAsk"
+            android:windowSoftInputMode="adjustResize" />
+
+        <activity
             android:name=".ui.QrConfigActivity"
             android:configChanges="orientation|screenSize|keyboardHidden"
             android:exported="false"

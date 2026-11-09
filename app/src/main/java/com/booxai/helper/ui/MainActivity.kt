@@ -9,6 +9,7 @@ import android.provider.Settings
 import android.view.View
 import android.widget.TextView
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
@@ -18,6 +19,7 @@ import com.booxai.helper.App
 import com.booxai.helper.R
 import com.booxai.helper.accessibility.AccessibilityUtil
 import com.booxai.helper.accessibility.ReadingState
+import com.booxai.helper.data.BookEntity
 import com.booxai.helper.databinding.ActivityMainBinding
 import com.booxai.helper.floating.FloatingBubbleService
 import kotlinx.coroutines.launch
@@ -36,12 +38,15 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private val adapter = BookAdapter { book ->
-        startActivity(
-            Intent(this, BookDetailActivity::class.java)
-                .putExtra(BookDetailActivity.EXTRA_BOOK_ID, book.id)
-        )
-    }
+    private val adapter = BookAdapter(
+        onClick = { book ->
+            startActivity(
+                Intent(this, BookDetailActivity::class.java)
+                    .putExtra(BookDetailActivity.EXTRA_BOOK_ID, book.id)
+            )
+        },
+        onDelete = { book -> confirmDeleteBook(book) },
+    )
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -157,6 +162,23 @@ class MainActivity : AppCompatActivity() {
         }
         FloatingBubbleService.start(this)
         toast(getString(R.string.toast_bubble_started))
+    }
+
+    private fun confirmDeleteBook(book: BookEntity) {
+        AlertDialog.Builder(this)
+            .setTitle(R.string.delete_book)
+            .setMessage(getString(R.string.delete_book_confirm, book.title))
+            .setPositiveButton(R.string.dialog_delete) { _, _ ->
+                lifecycleScope.launch {
+                    val deleted = App.repository.deleteBook(book.id)
+                    if (deleted != null && ReadingState.lastBookTitle == deleted.title) {
+                        ReadingState.lastBookTitle = null
+                    }
+                    toast(getString(R.string.deleted))
+                }
+            }
+            .setNegativeButton(R.string.dialog_cancel, null)
+            .show()
     }
 
     private fun openOverlaySettings() {

@@ -22,7 +22,8 @@ class SettingsStore(context: Context) {
         set(value) = prefs.edit().putString(KEY_MODEL, value.trim()).apply()
 
     var ttsEnabled: Boolean
-        get() = prefs.getBoolean(KEY_TTS_ENABLED, true)
+        // 默认关闭朗读，避免第一次提问就出声；需要时在面板或设置里手动开启。
+        get() = prefs.getBoolean(KEY_TTS_ENABLED, false)
         set(value) = prefs.edit().putBoolean(KEY_TTS_ENABLED, value).apply()
 
     var ttsRate: Float

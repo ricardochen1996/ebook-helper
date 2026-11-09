@@ -38,6 +38,9 @@ interface BookDao {
     @Delete
     suspend fun delete(book: BookEntity)
 
+    @Query("DELETE FROM books WHERE id = :id")
+    suspend fun deleteById(id: Long)
+
     @Query("UPDATE books SET lastOpenedAt = :time WHERE id = :id")
     suspend fun touch(id: Long, time: Long)
 
@@ -70,6 +73,9 @@ interface SessionDao {
     @Insert
     suspend fun insert(session: SessionEntity): Long
 
+    @Query("DELETE FROM sessions WHERE id = :id")
+    suspend fun deleteById(id: Long)
+
     @Query("UPDATE sessions SET lastMessageAt = :time, title = COALESCE(title, :title) WHERE id = :id")
     suspend fun touch(id: Long, time: Long, title: String?)
 
@@ -90,6 +96,19 @@ interface MessageDao {
 
     @Query("SELECT * FROM messages WHERE sessionId = :sessionId AND role = 'user' AND pageText IS NOT NULL ORDER BY id DESC LIMIT 1")
     suspend fun lastUserMessageWithPage(sessionId: Long): MessageEntity?
+
+    @Query("SELECT screenshotPath FROM messages WHERE sessionId = :sessionId AND screenshotPath IS NOT NULL")
+    suspend fun screenshotPathsForSession(sessionId: Long): List<String>
+
+    @Query(
+        "SELECT m.screenshotPath FROM messages m " +
+            "INNER JOIN sessions s ON m.sessionId = s.id " +
+            "WHERE s.bookId = :bookId AND m.screenshotPath IS NOT NULL"
+    )
+    suspend fun screenshotPathsForBook(bookId: Long): List<String>
+
+    @Query("SELECT screenshotPath FROM messages WHERE screenshotPath IS NOT NULL")
+    suspend fun allScreenshotPaths(): List<String>
 
     @Insert
     suspend fun insert(message: MessageEntity): Long

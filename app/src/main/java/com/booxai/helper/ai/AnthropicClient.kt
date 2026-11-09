@@ -103,12 +103,13 @@ class AnthropicClient(
                 }
                 when (json.optString("type")) {
                     "content_block_delta" -> {
-                        val text = json.optJSONObject("delta")?.optString("text", "")
+                        // 忽略 JSON null / 非文本 delta（如 tool 的 input_json_delta）。
+                        val text = json.optJSONObject("delta")?.opt("text") as? String
                         if (!text.isNullOrEmpty()) emit(LlmEvent.Text(text))
                     }
                     "message_stop" -> break
                     "error" -> {
-                        val message = json.optJSONObject("error")?.optString("message")
+                        val message = json.optJSONObject("error")?.opt("message") as? String
                             ?: data.take(300)
                         emit(LlmEvent.Error(message))
                         emittedError = true

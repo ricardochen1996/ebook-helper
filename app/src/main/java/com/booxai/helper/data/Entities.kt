@@ -62,6 +62,8 @@ data class MessageEntity(
     val model: String? = null,
     val createdAt: Long,
     val interrupted: Boolean = false,
+    /** 提问时附带的当前页截图，保存在 App 私有目录，用于会话回看。 */
+    val screenshotPath: String? = null,
 )
 
 data class BookSummary(

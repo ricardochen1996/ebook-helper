@@ -54,6 +54,8 @@ class WeReadAccessibilityService : AccessibilityService() {
         // 有新事件时先让悬浮球缓存失效；等去抖后的 extractLatest 完成再恢复，
         // 避免翻页事件刚到、还没重新抓取时复用上一页正文。
         ReadingState.lastCaptureAt = 0L
+        // 墨水屏刷新可能晚于无障碍树更新，点击悬浮球时要等页面稳定再截图。
+        ReadingState.lastPageEventAt = System.currentTimeMillis()
         // 微信读书一次翻页/目录动画会连续发很多事件。
         // 合并成一次树遍历，避免主线程被无障碍查询拖住。
         handler.removeCallbacks(extractRunnable)

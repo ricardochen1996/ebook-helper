@@ -123,6 +123,7 @@ class ChatRepository(
         provider: String? = null,
         model: String? = null,
         interrupted: Boolean = false,
+        screenshotPath: String? = null,
     ): MessageEntity = withContext(Dispatchers.IO) {
         val now = System.currentTimeMillis()
         val id = messageDao.insert(
@@ -136,6 +137,7 @@ class ChatRepository(
                 model = model,
                 createdAt = now,
                 interrupted = interrupted,
+                screenshotPath = screenshotPath,
             )
         )
         sessionDao.touch(
@@ -157,6 +159,7 @@ class ChatRepository(
             model = model,
             createdAt = now,
             interrupted = interrupted,
+            screenshotPath = screenshotPath,
         )
     }
 
@@ -164,9 +167,31 @@ class ChatRepository(
         messageDao.updateContent(id, content, interrupted)
     }
 
+    /**
+     * 删除一本书；sessions/messages 由外键 CASCADE 一起删除。
+     * 返回被删除的书，便于界面清理“上次书名”缓存。
+     */
+    suspend fun deleteBook(id: Long): BookEntity? = withContext(Dispatchers.IO) {
+        val book = bookDao.byId(id) ?: return@withContext null
+        val screenshots = messageDao.screenshotPathsForBook(id)
+        bookDao.deleteById(id)
+        ScreenshotStore.delete(screenshots)
+        if (normalizeTitle(book.title) == normalizeTitle(settings.lastBookTitle)) {
+            settings.lastBookTitle = ""
+        }
+        book
+    }
+
+    suspend fun deleteSession(id: Long) = withContext(Dispatchers.IO) {
+        val screenshots = messageDao.screenshotPathsForSession(id)
+        sessionDao.deleteById(id)
+        ScreenshotStore.delete(screenshots)
+    }
+
     suspend fun clearAll() = withContext(Dispatchers.IO) {
         messageDao.clearAll()
         db.clearAllTables()
+        ScreenshotStore.clear()
     }
 
     private fun normalizeTitle(title: String): String {

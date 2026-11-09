@@ -103,15 +103,19 @@ class OpenAiClient(
                 }
                 val error = json.optJSONObject("error")
                 if (error != null) {
-                    emit(LlmEvent.Error(error.optString("message").ifEmpty { data.take(300) }))
+                    val message = error.opt("message") as? String
+                    emit(LlmEvent.Error(message?.ifEmpty { data.take(300) } ?: data.take(300)))
                     emittedError = true
                     break
                 }
                 val choices = json.optJSONArray("choices") ?: continue
                 val choice = choices.optJSONObject(0) ?: continue
                 val delta = choice.optJSONObject("delta") ?: continue
-                val content = delta.optString("content", "")
-                if (content.isNotEmpty()) {
+                // 部分服务商（尤其是带 reasoning 的模型）会先连续推送
+                // "content": null 的分片。org.json 的 optString 会把
+                // JSON null 变成字符串 "null"，直接显示成一大堆 null。
+                val content = delta.opt("content") as? String
+                if (!content.isNullOrEmpty()) {
                     emit(LlmEvent.Text(content))
                 }
             }

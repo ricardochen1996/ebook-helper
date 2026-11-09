@@ -82,6 +82,22 @@
         <item name="android:paddingRight">10dp</item>
     </style>
 
+    <style name="Widget.ReadAsk.IconButton" parent="android:Widget.ImageButton">
+        <item name="android:background">@drawable/bg_button</item>
+        <item name="android:backgroundTint">@null</item>
+        <item name="android:tint">@color/button_text</item>
+        <item name="android:padding">10dp</item>
+        <item name="android:minWidth">44dp</item>
+        <item name="android:minHeight">44dp</item>
+        <item name="android:scaleType">centerInside</item>
+        <item name="android:stateListAnimator">@null</item>
+    </style>
+
+    <style name="Widget.ReadAsk.IconButton.Primary" parent="Widget.ReadAsk.IconButton">
+        <item name="android:background">@drawable/bg_button_primary</item>
+        <item name="android:tint">@color/icon_on_primary</item>
+    </style>
+
     <style name="Widget.ReadAsk.PlainButton" parent="android:Widget.Button">
         <item name="android:background">@drawable/bg_button</item>
         <item name="android:backgroundTint">@null</item>

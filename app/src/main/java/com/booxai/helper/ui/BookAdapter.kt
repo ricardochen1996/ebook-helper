@@ -12,6 +12,7 @@ import com.booxai.helper.util.TimeFormat
 
 class BookAdapter(
     private val onClick: (BookEntity) -> Unit,
+    private val onDelete: (BookEntity) -> Unit,
 ) : ListAdapter<BookSummary, BookAdapter.Holder>(DIFF) {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): Holder {
@@ -32,6 +33,7 @@ class BookAdapter(
         }
         holder.binding.tvBookMeta.text = meta
         holder.binding.root.setOnClickListener { onClick(item.book) }
+        holder.binding.btnDeleteBook.setOnClickListener { onDelete(item.book) }
     }
 
     class Holder(val binding: ItemBookBinding) : RecyclerView.ViewHolder(binding.root)

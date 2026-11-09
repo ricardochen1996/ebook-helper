@@ -49,14 +49,32 @@ object WeReadExtractor {
         wantTitle: Boolean,
     ): PageAndTitle {
         var bestPage: String? = null
+        var bestPageScore = Long.MIN_VALUE
         var bestTitle: String? = null
         var bestTitleTop = Int.MAX_VALUE
         for (window in windows) {
             val root = window.root ?: continue
             if (root.packageName?.toString() != PKG) continue
-            val candidate = extractPageText(root)
-            if (candidate != null && (bestPage == null || candidate.length > bestPage.length)) {
-                bestPage = candidate
+            val windowBounds = Rect()
+            try {
+                window.getBoundsInScreen(windowBounds)
+            } catch (_: Exception) {
+                windowBounds.setEmpty()
+            }
+            val candidate = extractPageText(
+                root,
+                windowBounds.takeIf { !it.isEmpty },
+            )
+            if (candidate != null) {
+                // 微信读书预加载相邻页时，非活动窗口里也可能有更长的正文；
+                // 优先取当前活动/聚焦窗口，而不是单纯比长度。
+                val score = (if (window.isActive) 2_000_000L else 0L) +
+                    (if (window.isFocused) 1_000_000L else 0L) +
+                    candidate.length
+                if (score > bestPageScore) {
+                    bestPageScore = score
+                    bestPage = candidate
+                }
             }
             if (wantTitle) {
                 val scan = scanToc(root)
@@ -79,14 +97,30 @@ object WeReadExtractor {
     fun extractBookTitle(windows: List<AccessibilityWindowInfo>): String? =
         extractFromWindows(windows, wantTitle = true).bookTitle
 
-    fun extractPageText(root: AccessibilityNodeInfo?): String? {
+    fun extractPageText(root: AccessibilityNodeInfo?, visibleBounds: Rect? = null): String? {
         if (root == null) return null
-        val pageNode = findBookPageNode(root) ?: root
-        val contentDescriptions = mutableListOf<String>()
+        val pageNodes = findBookPageNodes(root)
+        val contentDescriptions = mutableListOf<DescCandidate>()
         val texts = mutableListOf<String>()
-        collect(pageNode, contentDescriptions, texts, 0)
+        if (pageNodes.isEmpty()) {
+            collect(root, contentDescriptions, texts, 0)
+        } else {
+            pageNodes.forEach { collect(it, contentDescriptions, texts, 0) }
+        }
 
-        val fromDesc = contentDescriptions.maxByOrNull { it.length }
+        // 优先选屏幕内可见的正文节点；预加载的相邻页通常不在窗口内。
+        val visible = visibleBounds?.let { bounds ->
+            contentDescriptions.filter { visibleArea(it.bounds, bounds) > 0 }
+        }.orEmpty()
+        val fromDesc = if (visible.isNotEmpty()) {
+            val bounds = visibleBounds!!
+            visible.maxWithOrNull(
+                compareBy<DescCandidate> { visibleArea(it.bounds, bounds) }
+                    .thenBy { it.text.length }
+            )?.text
+        } else {
+            contentDescriptions.maxByOrNull { it.text.length }?.text
+        }
         val raw = when {
             !fromDesc.isNullOrBlank() && fromDesc.length >= 20 -> fromDesc
             texts.isNotEmpty() -> texts.joinToString("\n")
@@ -95,16 +129,36 @@ object WeReadExtractor {
         return normalizePage(raw)
     }
 
-    private fun findBookPageNode(root: AccessibilityNodeInfo): AccessibilityNodeInfo? {
+    private data class DescCandidate(val text: String, val bounds: Rect)
+
+    private fun findBookPageNodes(root: AccessibilityNodeInfo): List<AccessibilityNodeInfo> {
         // 需要 accessibilityFlags 里的 flagReportViewIds，viewIdResourceName 才有效。
-        // 优先走系统按 ID 查找，避免手动全树扫描；找不到再回退。
+        // book_page 可能同时存在于当前页和预加载的相邻页，全部收集后再按可见区域选。
         val byId = try {
-            root.findAccessibilityNodeInfosByViewId(BOOK_PAGE_ID)?.firstOrNull()
+            root.findAccessibilityNodeInfosByViewId(BOOK_PAGE_ID).orEmpty()
         } catch (_: Exception) {
-            null
+            emptyList()
         }
-        lastFoundByViewId = byId != null
-        return byId ?: findNodeById(root, BOOK_PAGE_ID)
+        lastFoundByViewId = byId.isNotEmpty()
+        if (byId.isNotEmpty()) return byId
+        val manual = mutableListOf<AccessibilityNodeInfo>()
+        collectNodesById(root, BOOK_PAGE_ID, manual)
+        return manual
+    }
+
+    private fun collectNodesById(
+        node: AccessibilityNodeInfo,
+        id: String,
+        out: MutableList<AccessibilityNodeInfo>,
+    ) {
+        if (node.viewIdResourceName == id) {
+            out.add(node)
+            return
+        }
+        for (i in 0 until node.childCount) {
+            val child = node.getChild(i) ?: continue
+            collectNodesById(child, id, out)
+        }
     }
 
     fun isPlausibleTitle(title: String?): Boolean {
@@ -158,13 +212,20 @@ object WeReadExtractor {
 
     private fun collect(
         node: AccessibilityNodeInfo,
-        contentDescriptions: MutableList<String>,
+        contentDescriptions: MutableList<DescCandidate>,
         texts: MutableList<String>,
         depth: Int,
     ) {
         if (depth > 40) return
         val desc = node.contentDescription?.toString()?.trim()
-        if (!desc.isNullOrEmpty()) contentDescriptions.add(desc)
+        if (!desc.isNullOrEmpty()) {
+            val bounds = Rect()
+            try {
+                node.getBoundsInScreen(bounds)
+            } catch (_: Exception) {
+            }
+            contentDescriptions.add(DescCandidate(desc, bounds))
+        }
         val text = node.text?.toString()?.trim()
         if (!text.isNullOrEmpty()) texts.add(text)
         for (i in 0 until node.childCount) {
@@ -173,14 +234,11 @@ object WeReadExtractor {
         }
     }
 
-    private fun findNodeById(node: AccessibilityNodeInfo, id: String): AccessibilityNodeInfo? {
-        if (node.viewIdResourceName == id) return node
-        for (i in 0 until node.childCount) {
-            val child = node.getChild(i) ?: continue
-            val found = findNodeById(child, id)
-            if (found != null) return found
-        }
-        return null
+    private fun visibleArea(rect: Rect, bounds: Rect): Int {
+        if (rect.isEmpty || bounds.isEmpty) return 0
+        val intersection = Rect(rect)
+        if (!intersection.intersect(bounds)) return 0
+        return intersection.width() * intersection.height()
     }
 
     private fun normalizePage(raw: String): String? {

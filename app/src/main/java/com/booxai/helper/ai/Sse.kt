@@ -44,8 +44,8 @@ object LlmErrors {
     fun http(code: Int, body: String): String {
         val serverMessage = try {
             val json = org.json.JSONObject(body)
-            json.optJSONObject("error")?.optString("message")
-                ?: json.optString("message")
+            (json.optJSONObject("error")?.opt("message") as? String)
+                ?: (json.opt("message") as? String)
         } catch (_: Exception) {
             ""
         }.orEmpty()
