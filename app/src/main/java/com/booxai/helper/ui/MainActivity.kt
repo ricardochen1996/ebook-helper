@@ -59,7 +59,7 @@ class MainActivity : AppCompatActivity() {
         binding.btnOverlay.setOnClickListener { openOverlaySettings() }
         binding.btnA11y.setOnClickListener { openAccessibilitySettings() }
         binding.btnApi.setOnClickListener {
-            startActivity(Intent(this, SettingsActivity::class.java))
+            startActivity(Intent(this, QrConfigActivity::class.java))
         }
         binding.btnStartBubble.setOnClickListener { startBubble() }
         binding.btnBubbleReady.setOnClickListener { startBubble() }

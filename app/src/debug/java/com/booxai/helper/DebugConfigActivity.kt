@@ -49,6 +49,11 @@ class DebugConfigActivity : AppCompatActivity() {
                 }
             }.start()
         }
+        if (intent.getBooleanExtra("qr_config", false)) {
+            startActivity(
+                android.content.Intent(this, com.booxai.helper.ui.QrConfigActivity::class.java)
+            )
+        }
         if (!debugQuestion.isNullOrBlank()) {
             startActivity(
                 android.content.Intent(this, com.booxai.helper.ui.PanelActivity::class.java).apply {

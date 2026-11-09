@@ -121,7 +121,7 @@
                 style="@style/Widget.ReadAsk.PlainButton"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="@string/setup_open_api" />
+                android:text="@string/setup_qr_config" />
         </LinearLayout>
 
         <Button

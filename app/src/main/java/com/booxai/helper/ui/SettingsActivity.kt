@@ -9,6 +9,7 @@ import android.widget.AdapterView
 import android.widget.ArrayAdapter
 import android.widget.SeekBar
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.Lifecycle
@@ -35,6 +36,14 @@ class SettingsActivity : AppCompatActivity() {
     private var suppressPreset = false
     private val protocolValues = listOf("openai", "anthropic")
 
+    private val qrConfigLauncher =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            if (result.resultCode == RESULT_OK) {
+                loadConfigFields()
+                toast(getString(R.string.qr_config_saved))
+            }
+        }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivitySettingsBinding.inflate(layoutInflater)
@@ -57,17 +66,7 @@ class SettingsActivity : AppCompatActivity() {
             )
         )
 
-        val preset = ProviderPresets.byId(App.settings.presetId)
-        suppressPreset = true
-        binding.spinnerPreset.setSelection(ProviderPresets.idOf(preset), false)
-        suppressPreset = false
-        binding.spinnerProtocol.setSelection(
-            if (App.settings.protocol == "anthropic") 1 else 0,
-            false
-        )
-        binding.etBaseUrl.setText(App.settings.baseUrl)
-        binding.etModel.setText(App.settings.model)
-        updateKeyStatus()
+        loadConfigFields()
 
         binding.spinnerPreset.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(
@@ -109,6 +108,9 @@ class SettingsActivity : AppCompatActivity() {
 
         binding.btnSave.setOnClickListener { saveConfig() }
         binding.btnTest.setOnClickListener { testConnection() }
+        binding.btnQrConfig.setOnClickListener {
+            qrConfigLauncher.launch(Intent(this, QrConfigActivity::class.java))
+        }
 
         binding.switchTts.isChecked = App.settings.ttsEnabled
         binding.switchTts.setOnCheckedChangeListener { _, checked ->
@@ -275,6 +277,21 @@ class SettingsActivity : AppCompatActivity() {
             R.string.settings_overlay_status,
             getString(if (overlay) R.string.settings_on else R.string.settings_off)
         )
+    }
+
+    private fun loadConfigFields() {
+        suppressPreset = true
+        val preset = ProviderPresets.byId(App.settings.presetId)
+        binding.spinnerPreset.setSelection(ProviderPresets.idOf(preset), false)
+        suppressPreset = false
+        binding.spinnerProtocol.setSelection(
+            if (App.settings.protocol == "anthropic") 1 else 0,
+            false
+        )
+        binding.etBaseUrl.setText(App.settings.baseUrl)
+        binding.etModel.setText(App.settings.model)
+        binding.etApiKey.setText("")
+        updateKeyStatus()
     }
 
     private fun updateKeyStatus() {

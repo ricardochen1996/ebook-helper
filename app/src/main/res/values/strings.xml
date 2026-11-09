@@ -15,6 +15,7 @@
     <string name="setup_open_overlay">开启悬浮窗权限</string>
     <string name="setup_open_a11y">开启无障碍服务</string>
     <string name="setup_open_api">配置 AI 接口</string>
+    <string name="setup_qr_config">扫码配置</string>
     <string name="setup_start_bubble">启动悬浮球</string>
     <string name="open_panel_test">打开面板测试语音</string>
     <string name="setup_done">一切就绪。打开微信读书，点悬浮球提问。</string>
@@ -82,6 +83,17 @@
     <string name="settings_api_key_hint">留空表示不修改已保存的 Key</string>
     <string name="settings_save">保存配置</string>
     <string name="settings_test">测试连接</string>
+    <string name="settings_qr_config">手机扫码配置 API（推荐）</string>
+    <string name="qr_config_title">手机扫码配置 API</string>
+    <string name="qr_config_hint">用手机相机或微信扫下面的二维码，在手机上填写 Base URL、模型和 API Key。手机和电子书需要连接同一个 Wi-Fi。</string>
+    <string name="qr_config_waiting">等待手机提交…</string>
+    <string name="qr_config_saved">配置已保存</string>
+    <string name="qr_config_timeout">等待超时，请重试</string>
+    <string name="qr_config_no_wifi">未连接到 Wi-Fi，请先连接与手机相同的 Wi-Fi</string>
+    <string name="qr_config_url_label">扫码失败时，可在手机浏览器打开：</string>
+    <string name="qr_config_phone_hint">手机页面提交后，电子书会自动保存并返回。配置服务只在等待期间运行。</string>
+    <string name="qr_config_cancel">取消</string>
+    <string name="qr_config_error">配置页启动失败：%1$s</string>
     <string name="settings_saved">已保存</string>
     <string name="settings_testing">测试中…</string>
     <string name="settings_test_ok">连接成功：%1$s</string>
