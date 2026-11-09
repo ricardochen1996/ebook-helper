@@ -31,7 +31,9 @@ class DebugConfigActivity : AppCompatActivity() {
             val result = com.booxai.helper.accessibility.WeReadAccessibilityService.instance?.capture()
             android.util.Log.i(
                 "ReadAskDebug",
-                "capture title=${result?.bookTitle} len=${result?.pageText?.length} preview=${result?.pageText?.take(60)}"
+                "capture title=${result?.bookTitle} len=${result?.pageText?.length} " +
+                    "byId=${com.booxai.helper.accessibility.WeReadExtractor.lastFoundByViewId} " +
+                    "preview=${result?.pageText?.take(60)}"
             )
         }
         if (!netHost.isNullOrBlank()) {

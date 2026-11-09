@@ -23,6 +23,8 @@ import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import com.booxai.helper.App
 import com.booxai.helper.R
+import com.booxai.helper.accessibility.CaptureResult
+import com.booxai.helper.accessibility.ReadingState
 import com.booxai.helper.accessibility.WeReadAccessibilityService
 import com.booxai.helper.ui.MainActivity
 import com.booxai.helper.ui.PanelActivity
@@ -163,6 +165,7 @@ class FloatingBubbleService : Service() {
         private var startY = 0
         private var moved = false
         private var longPressFired = false
+        private var lastDragUpdateAt = 0L
         private val touchSlop = dp(8)
 
         override fun onTouch(view: View, event: MotionEvent): Boolean {
@@ -185,7 +188,8 @@ class FloatingBubbleService : Service() {
                         moved = true
                         cancelLongPress()
                     }
-                    if (moved) {
+                    if (moved && event.eventTime - lastDragUpdateAt >= DRAG_UPDATE_INTERVAL_MS) {
+                        lastDragUpdateAt = event.eventTime
                         val bounds = windowBounds()
                         layoutParams.x = (startX + dx.toInt()).coerceIn(0, bounds.width() - view.width)
                         layoutParams.y = (startY + dy.toInt()).coerceIn(0, bounds.height() - view.height)
@@ -239,10 +243,20 @@ class FloatingBubbleService : Service() {
             toast(getString(R.string.toast_no_a11y))
             return
         }
-        val capture = try {
-            service.capture()
-        } catch (_: Exception) {
-            null
+        // 页面内容变化时服务已经缓存了正文；2 秒内直接复用，避免点击时
+        // 再同步遍历整棵无障碍树，把面板打开拖慢。
+        val now = System.currentTimeMillis()
+        val cachedPage = ReadingState.lastPageText
+        val cacheFresh = !cachedPage.isNullOrBlank() &&
+            now - ReadingState.lastCaptureAt in 0..2_000L
+        val capture = if (cacheFresh) {
+            CaptureResult(cachedPage!!, ReadingState.lastBookTitle, ReadingState.lastCaptureAt)
+        } else {
+            try {
+                service.capture()
+            } catch (_: Exception) {
+                null
+            }
         }
         if (capture == null || capture.pageText.isBlank()) {
             toast(getString(R.string.toast_not_weread))
@@ -301,6 +315,7 @@ class FloatingBubbleService : Service() {
         private const val ACTION_STOP = "com.booxai.helper.STOP_BUBBLE"
         private const val KEY_X = "bubble_x"
         private const val KEY_Y = "bubble_y"
+        private const val DRAG_UPDATE_INTERVAL_MS = 40L
 
         @Volatile
         private var instance: FloatingBubbleService? = null

@@ -18,8 +18,9 @@ class App : Application() {
         secrets = SecretStore(this)
         repository = ChatRepository(db, settings)
         router = ProviderRouter(settings, secrets)
+        // TTS 引擎按需初始化：避免无障碍服务/悬浮球进程一启动就常驻绑定
+        // Google TTS（在 Leaf3 上约 100MB PSS + 80MB swap）。
         tts = TtsController(this)
-        tts.init()
     }
 
     companion object {

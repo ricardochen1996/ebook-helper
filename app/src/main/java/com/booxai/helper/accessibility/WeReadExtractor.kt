@@ -22,22 +22,66 @@ object WeReadExtractor {
         "下拉添加书签", "已添加书签", "已取消书签", "书签已添加",
     )
 
-    fun extractPageTextFromWindows(windows: List<AccessibilityWindowInfo>): String? {
-        var best: String? = null
+    // 预编译，避免每次事件/每个节点都重新编译正则。
+    private val PAGE_NUMBER = Regex("^\\d{1,5}$")
+    private val CHAPTER_NUMBERED = Regex("^\\d+\\s+\\S.{2,}$")
+    private val CHAPTER_CN = Regex("^第[一二三四五六七八九十百零〇\\d]+[章节卷部].{0,60}$")
+    private val ONLY_DIGITS = Regex("^\\d+\\s*$")
+    private val PAGE_RANGE = Regex("^\\d+\\s*[/／]\\s*\\d+$")
+    private val CHAPTER_PREFIX = Regex("^(\\d+|[一二三四五六七八九十百]+)[\\s、.．].*")
+    private val ZERO_WIDTH = Regex("[\\u200B-\\u200D\\uFEFF]")
+    private val MULTI_SPACE = Regex("[ \\t]+")
+    private val MULTI_NEWLINE = Regex("\n{3,}")
+
+    data class PageAndTitle(val pageText: String?, val bookTitle: String?)
+
+    /** 真机联调用：最近一次是否成功通过 resource-id 定位到 book_page。 */
+    @Volatile
+    var lastFoundByViewId: Boolean = false
+        private set
+
+    /**
+     * 一次遍历所有窗口，同时取当前页正文和（可选的）书名。
+     * 原来的实现先遍历所有窗口取正文，再遍历所有窗口取书名，root 也要取两遍。
+     */
+    fun extractFromWindows(
+        windows: List<AccessibilityWindowInfo>,
+        wantTitle: Boolean,
+    ): PageAndTitle {
+        var bestPage: String? = null
+        var bestTitle: String? = null
+        var bestTitleTop = Int.MAX_VALUE
         for (window in windows) {
             val root = window.root ?: continue
             if (root.packageName?.toString() != PKG) continue
-            val candidate = extractPageText(root) ?: continue
-            if (best == null || candidate.length > best.length) {
-                best = candidate
+            val candidate = extractPageText(root)
+            if (candidate != null && (bestPage == null || candidate.length > bestPage.length)) {
+                bestPage = candidate
+            }
+            if (wantTitle) {
+                val scan = scanToc(root)
+                if (scan.isToc) {
+                    for ((top, text) in scan.titles) {
+                        if (top < bestTitleTop) {
+                            bestTitleTop = top
+                            bestTitle = text
+                        }
+                    }
+                }
             }
         }
-        return best
+        return PageAndTitle(bestPage, bestTitle)
     }
+
+    fun extractPageTextFromWindows(windows: List<AccessibilityWindowInfo>): String? =
+        extractFromWindows(windows, wantTitle = false).pageText
+
+    fun extractBookTitle(windows: List<AccessibilityWindowInfo>): String? =
+        extractFromWindows(windows, wantTitle = true).bookTitle
 
     fun extractPageText(root: AccessibilityNodeInfo?): String? {
         if (root == null) return null
-        val pageNode = findNodeById(root, BOOK_PAGE_ID) ?: root
+        val pageNode = findBookPageNode(root) ?: root
         val contentDescriptions = mutableListOf<String>()
         val texts = mutableListOf<String>()
         collect(pageNode, contentDescriptions, texts, 0)
@@ -51,51 +95,56 @@ object WeReadExtractor {
         return normalizePage(raw)
     }
 
-    /**
-     * 仅在目录面板打开时返回书名：取顶部区域中第一个像书名的 TextView。
-     * 先确认窗口里确实有一批章节/页码节点，避免把“下拉添加书签”这类临时提示当书名。
-     */
-    fun extractBookTitle(windows: List<AccessibilityWindowInfo>): String? {
-        var best: Pair<Int, String>? = null
-        for (window in windows) {
-            val root = window.root ?: continue
-            if (root.packageName?.toString() != PKG) continue
-            if (!looksLikeToc(root)) continue
-            val candidates = mutableListOf<Pair<Int, String>>()
-            collectTitleCandidates(root, candidates, 0)
-            for (candidate in candidates) {
-                val currentBest = best
-                if (currentBest == null || candidate.first < currentBest.first) {
-                    best = candidate
-                }
-            }
+    private fun findBookPageNode(root: AccessibilityNodeInfo): AccessibilityNodeInfo? {
+        // 需要 accessibilityFlags 里的 flagReportViewIds，viewIdResourceName 才有效。
+        // 优先走系统按 ID 查找，避免手动全树扫描；找不到再回退。
+        val byId = try {
+            root.findAccessibilityNodeInfosByViewId(BOOK_PAGE_ID)?.firstOrNull()
+        } catch (_: Exception) {
+            null
         }
-        return best?.second
+        lastFoundByViewId = byId != null
+        return byId ?: findNodeById(root, BOOK_PAGE_ID)
     }
 
     fun isPlausibleTitle(title: String?): Boolean {
         val text = title?.trim().orEmpty()
         if (text.length !in 2..120) return false
         if (text in TITLE_BLOCKLIST) return false
-        if (text.matches(Regex("^\\d+\\s*$"))) return false
-        if (text.matches(Regex("^\\d+\\s*[/／]\\s*\\d+$"))) return false
-        if (text.matches(Regex("^(\\d+|[一二三四五六七八九十百]+)[\\s、.．].*"))) return false
+        if (ONLY_DIGITS.matches(text)) return false
+        if (PAGE_RANGE.matches(text)) return false
+        if (CHAPTER_PREFIX.matches(text)) return false
         if (text.startsWith("第") && text.length in 3..40) return false
         return true
     }
 
-    private fun looksLikeToc(root: AccessibilityNodeInfo): Boolean {
+    private data class TocScan(val isToc: Boolean, val titles: List<Pair<Int, String>>)
+
+    /**
+     * 一次遍历同时统计目录特征并收集顶部书名候选，
+     * 避免原来 looksLikeToc + collectTitleCandidates 的两遍全树扫描。
+     */
+    private fun scanToc(root: AccessibilityNodeInfo): TocScan {
         var pageNumbers = 0
         var chapters = 0
+        val titles = mutableListOf<Pair<Int, String>>()
 
         fun walk(node: AccessibilityNodeInfo, depth: Int) {
-            if (depth > 40 || pageNumbers >= 3 || chapters >= 3) return
+            if (depth > 40) return
             val text = node.text?.toString()?.trim().orEmpty()
-            if (text.matches(Regex("^\\d{1,5}$"))) pageNumbers++
-            if (text.matches(Regex("^\\d+\\s+\\S.{2,}$")) ||
-                text.matches(Regex("^第[一二三四五六七八九十百零〇\\d]+[章节卷部].{0,60}$"))
-            ) {
-                chapters++
+            if (text.isNotEmpty()) {
+                if (PAGE_NUMBER.matches(text)) pageNumbers++
+                if (CHAPTER_NUMBERED.matches(text) || CHAPTER_CN.matches(text)) chapters++
+                if (text.length in 2..120 &&
+                    node.className?.toString() == "android.widget.TextView" &&
+                    isPlausibleTitle(text)
+                ) {
+                    val bounds = Rect()
+                    node.getBoundsInScreen(bounds)
+                    if (bounds.top in 0..230) {
+                        titles.add(bounds.top to text)
+                    }
+                }
             }
             for (i in 0 until node.childCount) {
                 val child = node.getChild(i) ?: continue
@@ -104,7 +153,7 @@ object WeReadExtractor {
         }
 
         walk(root, 0)
-        return pageNumbers >= 3 || chapters >= 3
+        return TocScan(pageNumbers >= 3 || chapters >= 3, titles)
     }
 
     private fun collect(
@@ -124,27 +173,6 @@ object WeReadExtractor {
         }
     }
 
-    private fun collectTitleCandidates(
-        node: AccessibilityNodeInfo,
-        out: MutableList<Pair<Int, String>>,
-        depth: Int,
-    ) {
-        if (depth > 40) return
-        val text = node.text?.toString()?.trim().orEmpty()
-        if (text.length in 2..120 && node.className?.toString() == "android.widget.TextView") {
-            val bounds = Rect()
-            node.getBoundsInScreen(bounds)
-            val top = bounds.top
-            if (top in 0..230 && isPlausibleTitle(text)) {
-                out.add(top to text)
-            }
-        }
-        for (i in 0 until node.childCount) {
-            val child = node.getChild(i) ?: continue
-            collectTitleCandidates(child, out, depth + 1)
-        }
-    }
-
     private fun findNodeById(node: AccessibilityNodeInfo, id: String): AccessibilityNodeInfo? {
         if (node.viewIdResourceName == id) return node
         for (i in 0 until node.childCount) {
@@ -160,9 +188,9 @@ object WeReadExtractor {
             .replace('\u0000', ' ')
             .replace("\r\n", "\n")
             .replace("\r", "\n")
-            .replace(Regex("[\\u200B-\\u200D\\uFEFF]"), "")
-            .replace(Regex("[ \\t]+"), " ")
-            .replace(Regex("\n{3,}"), "\n\n")
+            .replace(ZERO_WIDTH, "")
+            .replace(MULTI_SPACE, " ")
+            .replace(MULTI_NEWLINE, "\n\n")
             .trim()
         if (text.isEmpty()) return null
         if (text.length > MAX_PAGE_CHARS) {

@@ -4,12 +4,18 @@ import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.AccessibilityServiceInfo
 import android.content.ComponentName
 import android.content.Context
+import android.os.Handler
+import android.os.Looper
 import android.provider.Settings
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
 import com.booxai.helper.App
 
 class WeReadAccessibilityService : AccessibilityService() {
+
+    private val handler = Handler(Looper.getMainLooper())
+    private val extractRunnable = Runnable { extractLatest() }
+    private var titleCheckPending = false
 
     override fun onServiceConnected() {
         super.onServiceConnected()
@@ -18,7 +24,8 @@ class WeReadAccessibilityService : AccessibilityService() {
         serviceInfo = serviceInfo?.apply {
             flags = flags or
                 AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS or
-                AccessibilityServiceInfo.FLAG_INCLUDE_NOT_IMPORTANT_VIEWS
+                AccessibilityServiceInfo.FLAG_INCLUDE_NOT_IMPORTANT_VIEWS or
+                AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS
             eventTypes = AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED or
                 AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED or
                 AccessibilityEvent.TYPE_VIEW_SCROLLED
@@ -35,16 +42,32 @@ class WeReadAccessibilityService : AccessibilityService() {
         ) {
             return
         }
+        if (type == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
+            titleCheckPending = true
+        }
+        // 微信读书一次翻页/目录动画会连续发很多事件。
+        // 合并成一次树遍历，避免主线程被无障碍查询拖住。
+        handler.removeCallbacks(extractRunnable)
+        handler.postDelayed(extractRunnable, EVENT_DEBOUNCE_MS)
+    }
+
+    private fun extractLatest() {
+        val wins = windows ?: return
+        val wantTitle = titleCheckPending
+        titleCheckPending = false
         try {
-            val wins = windows ?: return
-            val page = WeReadExtractor.extractPageTextFromWindows(wins)
+            val result = WeReadExtractor.extractFromWindows(wins, wantTitle)
+            val page = result.pageText
             if (!page.isNullOrBlank()) {
-                ReadingState.lastPageText = page
+                if (page != ReadingState.lastPageText) {
+                    ReadingState.lastPageText = page
+                }
+                // 即使正文没变，也刷新抓取时间，让悬浮球点击可以复用缓存。
                 ReadingState.lastCaptureAt = System.currentTimeMillis()
             }
-            if (App.settings.autoTitle) {
-                val title = WeReadExtractor.extractBookTitle(wins)
-                if (!title.isNullOrBlank()) {
+            if (wantTitle) {
+                val title = result.bookTitle
+                if (!title.isNullOrBlank() && title != ReadingState.lastBookTitle) {
                     ReadingState.lastBookTitle = title
                     App.settings.lastBookTitle = title
                     Log.i(TAG, "book title detected: $title")
@@ -57,14 +80,15 @@ class WeReadAccessibilityService : AccessibilityService() {
 
     fun capture(): CaptureResult? {
         val wins = windows ?: return null
-        val page = WeReadExtractor.extractPageTextFromWindows(wins) ?: return null
-        if (page.isBlank()) return null
-        val title = if (App.settings.autoTitle) {
-            WeReadExtractor.extractBookTitle(wins)
-        } else {
+        val result = try {
+            WeReadExtractor.extractFromWindows(wins, wantTitle = App.settings.autoTitle)
+        } catch (_: Exception) {
             null
-        } ?: ReadingState.lastBookTitle
-        if (!title.isNullOrBlank()) {
+        } ?: return null
+        val page = result.pageText ?: return null
+        if (page.isBlank()) return null
+        val title = result.bookTitle ?: ReadingState.lastBookTitle
+        if (!title.isNullOrBlank() && title != ReadingState.lastBookTitle) {
             ReadingState.lastBookTitle = title
             App.settings.lastBookTitle = title
         }
@@ -76,12 +100,14 @@ class WeReadAccessibilityService : AccessibilityService() {
     override fun onInterrupt() = Unit
 
     override fun onUnbind(intent: android.content.Intent?): Boolean {
+        handler.removeCallbacks(extractRunnable)
         instance = null
         ReadingState.serviceConnected = false
         return super.onUnbind(intent)
     }
 
     override fun onDestroy() {
+        handler.removeCallbacks(extractRunnable)
         instance = null
         ReadingState.serviceConnected = false
         super.onDestroy()
@@ -89,6 +115,7 @@ class WeReadAccessibilityService : AccessibilityService() {
 
     companion object {
         private const val TAG = "ReadAskA11y"
+        private const val EVENT_DEBOUNCE_MS = 300L
 
         @Volatile
         var instance: WeReadAccessibilityService? = null

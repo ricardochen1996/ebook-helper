@@ -5,6 +5,9 @@ import android.media.AudioAttributes
 import android.media.AudioFocusRequest
 import android.media.AudioManager
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import android.os.SystemClock
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
 import android.util.Log
@@ -21,10 +24,15 @@ class TtsController(context: Context) {
     private val audioManager = appContext.getSystemService(AudioManager::class.java)
     private val counter = AtomicInteger(0)
     private val pending = mutableListOf<Pair<String, Boolean>>()
+    private val handler = Handler(Looper.getMainLooper())
+    private val idleShutdown = Runnable { shutdown() }
+    private val speakingCount = AtomicInteger(0)
 
     private var tts: TextToSpeech? = null
     private var focusRequest: AudioFocusRequest? = null
     private var initialized = false
+    private var focusHeld = false
+    private var lastInitAttemptAt = 0L
 
     private val _state = MutableStateFlow(State.INITIALIZING)
     val state: StateFlow<State> = _state
@@ -45,9 +53,16 @@ class TtsController(context: Context) {
     var rate: Float = 1.0f
         private set
 
+    /**
+     * 按需初始化。App.onCreate 不再调用；第一次 speak() 时才绑定系统 TTS。
+     */
     fun init() {
-        if (initialized) return
+        if (initialized && _state.value != State.UNAVAILABLE) return
+        val now = SystemClock.elapsedRealtime()
+        if (lastInitAttemptAt != 0L && now - lastInitAttemptAt < INIT_RETRY_MS) return
+        lastInitAttemptAt = now
         initialized = true
+        _state.value = State.INITIALIZING
         createEngine("com.google.android.tts", 0)
     }
 
@@ -112,20 +127,39 @@ class TtsController(context: Context) {
         engine.setSpeechRate(rate)
         engine.setPitch(1.0f)
         engine.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
-            override fun onStart(utteranceId: String?) = Unit
-            override fun onDone(utteranceId: String?) = Unit
-            @Deprecated("Deprecated in Java")
-            override fun onError(utteranceId: String?) {
-                Log.w(TAG, "utterance error: $utteranceId")
+            override fun onStart(utteranceId: String?) {
+                handler.removeCallbacks(idleShutdown)
+                speakingCount.incrementAndGet()
             }
 
-            override fun onError(utteranceId: String?, errorCode: Int) {
-                Log.w(TAG, "utterance error: $utteranceId code=$errorCode")
-            }
+            override fun onDone(utteranceId: String?) = onUtteranceFinished()
+
+            @Deprecated("Deprecated in Java")
+            override fun onError(utteranceId: String?) = onUtteranceFinished()
+
+            override fun onError(utteranceId: String?, errorCode: Int) = onUtteranceFinished()
+
+            override fun onStop(utteranceId: String?, interrupted: Boolean) = onUtteranceFinished()
         })
         _state.value = State.READY
         lastError = ""
         flushPending()
+    }
+
+    /**
+     * 队列播完后再空闲一段时间就释放引擎，避免 Google TTS 进程常驻。
+     */
+    private fun onUtteranceFinished() {
+        val left = speakingCount.updateAndGet { if (it > 0) it - 1 else 0 }
+        if (left == 0) {
+            abandonFocus()
+            scheduleIdleShutdown()
+        }
+    }
+
+    private fun scheduleIdleShutdown() {
+        handler.removeCallbacks(idleShutdown)
+        handler.postDelayed(idleShutdown, IDLE_TIMEOUT_MS)
     }
 
     private fun fail(message: String) {
@@ -148,7 +182,8 @@ class TtsController(context: Context) {
     fun speak(text: String, flush: Boolean = false) {
         val clean = SpeechSanitizer.sanitize(text)
         if (clean.isBlank()) return
-        if (_state.value != State.READY) {
+        handler.removeCallbacks(idleShutdown)
+        if (_state.value != State.READY || tts == null) {
             pending.add(clean to flush)
             if (pending.size > 20) pending.removeAt(0)
             init()
@@ -178,11 +213,16 @@ class TtsController(context: Context) {
             tts?.stop()
         } catch (_: Exception) {
         }
+        speakingCount.set(0)
         abandonFocus()
+        scheduleIdleShutdown()
     }
 
     fun shutdown() {
+        handler.removeCallbacks(idleShutdown)
         pending.clear()
+        speakingCount.set(0)
+        abandonFocus()
         try {
             tts?.stop()
             tts?.shutdown()
@@ -190,7 +230,7 @@ class TtsController(context: Context) {
         }
         tts = null
         initialized = false
-        abandonFocus()
+        _state.value = State.INITIALIZING
     }
 
     private fun flushPending() {
@@ -202,6 +242,7 @@ class TtsController(context: Context) {
 
     private fun requestFocus() {
         val manager = audioManager ?: return
+        if (focusHeld) return
         if (focusRequest == null) {
             focusRequest = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK)
                 .setAudioAttributes(
@@ -214,7 +255,8 @@ class TtsController(context: Context) {
                 .build()
         }
         try {
-            manager.requestAudioFocus(focusRequest!!)
+            focusHeld = manager.requestAudioFocus(focusRequest!!) ==
+                AudioManager.AUDIOFOCUS_REQUEST_GRANTED
         } catch (_: Exception) {
         }
     }
@@ -222,6 +264,8 @@ class TtsController(context: Context) {
     private fun abandonFocus() {
         val manager = audioManager ?: return
         val request = focusRequest ?: return
+        if (!focusHeld) return
+        focusHeld = false
         try {
             manager.abandonAudioFocusRequest(request)
         } catch (_: Exception) {
@@ -230,5 +274,7 @@ class TtsController(context: Context) {
 
     companion object {
         private const val TAG = "ReadAskTts"
+        private const val INIT_RETRY_MS = 5_000L
+        private const val IDLE_TIMEOUT_MS = 180_000L
     }
 }

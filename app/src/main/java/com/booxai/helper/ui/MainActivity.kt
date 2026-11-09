@@ -25,6 +25,7 @@ import kotlinx.coroutines.launch
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
+    private var apiConfigured = false
     private val statusHandler = Handler(Looper.getMainLooper())
     private val statusRunnable = object : Runnable {
         override fun run() {
@@ -81,6 +82,8 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        // 只在回到首页时解密一次 API Key；否则 1.5s 轮询会反复走 Android Keystore。
+        apiConfigured = App.router.currentConfig() != null
         refreshStatus()
         statusHandler.removeCallbacks(statusRunnable)
         statusHandler.postDelayed(statusRunnable, 1500L)
@@ -95,7 +98,7 @@ class MainActivity : AppCompatActivity() {
         val overlay = Settings.canDrawOverlays(this)
         val a11yEnabled = AccessibilityUtil.isServiceEnabled(this)
         val a11yConnected = ReadingState.serviceConnected
-        val api = App.router.currentConfig() != null
+        val api = apiConfigured
 
         setTextIfChanged(
             binding.tvOverlayStatus,

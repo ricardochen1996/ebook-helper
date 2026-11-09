@@ -45,6 +45,11 @@ android {
                 "proguard-rules.pro"
             )
         }
+        debug {
+            // 与正式包同时安装，方便真机对比调试，不覆盖现有会话数据。
+            applicationIdSuffix = ".debug"
+            versionNameSuffix = "-debug"
+        }
     }
 
     compileOptions {

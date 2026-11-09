@@ -78,25 +78,39 @@ class SentenceSegmenter {
 
 object SpeechSanitizer {
 
+    // 预编译，避免每句朗读都在主线程重新编译正则。
+    private val CODE_BLOCK = Regex("```[\\s\\S]*?```")
+    private val INLINE_CODE = Regex("`([^`]*)`")
+    private val IMAGE = Regex("!\\[[^\\]]*]\\([^)]*\\)")
+    private val LINK = Regex("\\[([^\\]]*)]\\([^)]*\\)")
+    private val URL = Regex("https?://\\S+")
+    private val MARKDOWN_MARK = Regex("[*_#>`~]+")
+    private val BULLET = Regex("(?m)^\\s*[-•]\\s+")
+    private val NUMBERED = Regex("(?m)^\\s*\\d+[.、)]\\s+")
+    private val HTML_TAG = Regex("<[^>]+>")
+    private val CONTROL_CHARS = Regex("[\\u0000-\\u0008\\u000B\\u000C\\u000E-\\u001F]")
+    private val MULTI_SPACE = Regex("[ \\t]{2,}")
+    private val MULTI_NEWLINE = Regex("\n{2,}")
+
     fun sanitize(text: String): String {
         var s = text
         // 代码块、行内代码
-        s = s.replace(Regex("```[\\s\\S]*?```"), " ")
-        s = s.replace(Regex("`([^`]*)`"), "$1")
+        s = s.replace(CODE_BLOCK, " ")
+        s = s.replace(INLINE_CODE, "$1")
         // 图片、链接
-        s = s.replace(Regex("!\\[[^\\]]*]\\([^)]*\\)"), " ")
-        s = s.replace(Regex("\\[([^\\]]*)]\\([^)]*\\)"), "$1")
-        s = s.replace(Regex("https?://\\S+"), "链接")
+        s = s.replace(IMAGE, " ")
+        s = s.replace(LINK, "$1")
+        s = s.replace(URL, "链接")
         // Markdown 标记
-        s = s.replace(Regex("[*_#>`~]+"), "")
-        s = s.replace(Regex("(?m)^\\s*[-•]\\s+"), "")
-        s = s.replace(Regex("(?m)^\\s*\\d+[.、)]\\s+"), "")
+        s = s.replace(MARKDOWN_MARK, "")
+        s = s.replace(BULLET, "")
+        s = s.replace(NUMBERED, "")
         // HTML 标签
-        s = s.replace(Regex("<[^>]+>"), " ")
+        s = s.replace(HTML_TAG, " ")
         // 控制字符
-        s = s.replace(Regex("[\\u0000-\\u0008\\u000B\\u000C\\u000E-\\u001F]"), " ")
-        s = s.replace(Regex("[ \\t]{2,}"), " ")
-        s = s.replace(Regex("\n{2,}"), "\n")
+        s = s.replace(CONTROL_CHARS, " ")
+        s = s.replace(MULTI_SPACE, " ")
+        s = s.replace(MULTI_NEWLINE, "\n")
         return s.trim()
     }
 }

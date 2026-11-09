@@ -178,7 +178,19 @@ class PanelActivity : AppCompatActivity() {
         if (messages.isEmpty()) {
             MessageRenderer.addHint(binding.messagesContainer, getString(R.string.panel_ask_first))
         } else {
-            messages.forEach { message ->
+            // 长会话只渲染最近的一部分，避免打开面板时一次性 inflate 上百条消息。
+            val visible = if (messages.size > MAX_RENDERED_MESSAGES) {
+                messages.takeLast(MAX_RENDERED_MESSAGES)
+            } else {
+                messages
+            }
+            if (visible.size < messages.size) {
+                MessageRenderer.addHint(
+                    binding.messagesContainer,
+                    "仅显示最近 $MAX_RENDERED_MESSAGES 条消息，完整记录见书籍详情"
+                )
+            }
+            visible.forEach { message ->
                 MessageRenderer.addMessage(
                     binding.messagesContainer,
                     message.role,
@@ -282,7 +294,7 @@ class PanelActivity : AppCompatActivity() {
                                 }
                             }
                             val now = SystemClock.uptimeMillis()
-                            if (now - lastUiUpdate >= 250L) {
+                            if (now - lastUiUpdate >= STREAM_UI_INTERVAL_MS) {
                                 assistantView?.text = full.toString()
                                 lastUiUpdate = now
                                 scrollToBottom()
@@ -462,7 +474,14 @@ class PanelActivity : AppCompatActivity() {
             binding.tvPagePreview.maxLines = 3
             binding.tvPageToggle.visibility = View.GONE
         } else {
-            binding.tvPagePreview.text = text
+            // 收起时只排版前 300 字。整页最多 4000 字，全部塞进 3 行 TextView
+            // 会在开面板时产生一次不必要的全量文本测量。
+            val shown = if (expandedPage || text.length <= PREVIEW_COLLAPSED_CHARS) {
+                text
+            } else {
+                text.take(PREVIEW_COLLAPSED_CHARS) + "…"
+            }
+            binding.tvPagePreview.text = shown
             binding.tvPagePreview.maxLines = if (expandedPage) 30 else 3
             binding.tvPageToggle.visibility = View.VISIBLE
             binding.tvPageToggle.text = getString(
@@ -602,5 +621,10 @@ class PanelActivity : AppCompatActivity() {
         const val EXTRA_BOOK_TITLE = "book_title"
         const val EXTRA_SESSION_ID = "session_id"
         const val EXTRA_DEBUG_QUESTION = "debug_question"
+
+        // 墨水屏刷新慢，流式文本 600ms 更新一次足够，也能明显减少整段 TextView 重排。
+        private const val STREAM_UI_INTERVAL_MS = 600L
+        private const val MAX_RENDERED_MESSAGES = 60
+        private const val PREVIEW_COLLAPSED_CHARS = 300
     }
 }
