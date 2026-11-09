@@ -21,6 +21,9 @@ class WeReadAccessibilityService : AccessibilityService() {
         super.onServiceConnected()
         instance = this
         ReadingState.serviceConnected = true
+        if (ReadingState.lastBookTitle.isNullOrBlank()) {
+            ReadingState.lastBookTitle = App.settings.lastBookTitle.takeIf { it.isNotBlank() }
+        }
         serviceInfo = serviceInfo?.apply {
             flags = flags or
                 AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS or
@@ -56,10 +59,16 @@ class WeReadAccessibilityService : AccessibilityService() {
 
     private fun extractLatest() {
         val wins = windows ?: return
-        val wantTitle = titleCheckPending
-        titleCheckPending = false
+        val checkTitle = titleCheckPending
+        // 首次书名还没缓存时，内容变化也继续尝试识别，直到目录面板被打开过一次。
+        val wantTitle = App.settings.autoTitle &&
+            (checkTitle || ReadingState.lastBookTitle.isNullOrBlank())
+        if (!wantTitle) {
+            titleCheckPending = false
+        }
         try {
             val result = WeReadExtractor.extractFromWindows(wins, wantTitle)
+            titleCheckPending = false
             val page = result.pageText
             if (!page.isNullOrBlank()) {
                 if (page != ReadingState.lastPageText) {

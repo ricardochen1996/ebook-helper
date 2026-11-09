@@ -30,10 +30,33 @@ class TtsController(context: Context) {
     private val pendingUtterances = AtomicInteger(0)
     // 每次 QUEUE_FLUSH 换一代，旧一代的 onDone/onStop 不再影响新队列计数。
     private val generation = AtomicInteger(0)
+    // 保护 generation + pendingUtterances 的复合操作（主线程与 TTS 回调线程）。
+    private val lock = Any()
+    // 引擎进程死亡等极端情况下可能收不到完成回调，兜底释放。
+    private val forceIdle = Runnable {
+        val stuck = synchronized(lock) {
+            if (pendingUtterances.get() > 0) {
+                generation.incrementAndGet()
+                pendingUtterances.set(0)
+                true
+            } else {
+                false
+            }
+        }
+        if (stuck) {
+            try {
+                tts?.stop()
+            } catch (_: Exception) {
+            }
+            abandonFocus()
+            scheduleIdleShutdown()
+        }
+    }
 
     private var tts: TextToSpeech? = null
     private var focusRequest: AudioFocusRequest? = null
     private var initialized = false
+    @Volatile
     private var focusHeld = false
     private var lastInitAttemptAt = 0L
 
@@ -158,13 +181,19 @@ class TtsController(context: Context) {
      * 队列播完后再空闲一段时间就释放引擎，避免 Google TTS 进程常驻。
      */
     private fun onUtteranceFinished(utteranceId: String?) {
-        // QUEUE_FLUSH 后旧队列的完成回调可能晚到，忽略非当前代。
-        val gen = utteranceId?.split('_')?.getOrNull(1)?.toIntOrNull()
-        if (gen != null && gen != generation.get()) return
-        val left = pendingUtterances.updateAndGet { if (it > 0) it - 1 else 0 }
+        val left = synchronized(lock) {
+            // QUEUE_FLUSH 后旧队列的完成回调可能晚到，忽略非当前代。
+            val gen = utteranceId?.split('_')?.getOrNull(1)?.toIntOrNull()
+            if (gen != null && gen != generation.get()) return
+            pendingUtterances.updateAndGet { if (it > 0) it - 1 else 0 }
+        }
         if (left == 0) {
-            abandonFocus()
-            scheduleIdleShutdown()
+            handler.removeCallbacks(forceIdle)
+            // 回调来自 TTS binder 线程，音频焦点操作回主线程做。
+            handler.post {
+                abandonFocus()
+                scheduleIdleShutdown()
+            }
         }
     }
 
@@ -208,10 +237,13 @@ class TtsController(context: Context) {
         }
         val engine = tts ?: return
         requestFocus()
-        val gen = if (flush) generation.incrementAndGet() else generation.get()
-        if (flush) {
-            // QUEUE_FLUSH 会丢弃之前排队的内容，计数一并归零。
-            pendingUtterances.set(0)
+        val gen = if (flush) {
+            synchronized(lock) {
+                // QUEUE_FLUSH 会丢弃之前排队的内容，计数一并归零。
+                generation.incrementAndGet().also { pendingUtterances.set(0) }
+            }
+        } else {
+            generation.get()
         }
         val max = 3000
         var remaining = clean
@@ -231,20 +263,30 @@ class TtsController(context: Context) {
                 "readask_${gen}_${counter.incrementAndGet()}"
             )
             if (result == TextToSpeech.SUCCESS) {
-                pendingUtterances.incrementAndGet()
-            } else if (pendingUtterances.get() == 0) {
-                // 引擎直接拒绝且队列为空，别把音频焦点一直占着。
-                abandonFocus()
-                scheduleIdleShutdown()
+                synchronized(lock) { pendingUtterances.incrementAndGet() }
+            } else {
+                val empty = synchronized(lock) { pendingUtterances.get() == 0 }
+                if (empty) {
+                    // 引擎直接拒绝且队列为空，别把音频焦点一直占着。
+                    abandonFocus()
+                    scheduleIdleShutdown()
+                }
             }
             first = false
+        }
+        if (pendingUtterances.get() > 0) {
+            handler.removeCallbacks(forceIdle)
+            handler.postDelayed(forceIdle, MAX_UTTERANCE_MS)
         }
     }
 
     fun stop() {
         pending.clear()
-        generation.incrementAndGet()
-        pendingUtterances.set(0)
+        handler.removeCallbacks(forceIdle)
+        synchronized(lock) {
+            generation.incrementAndGet()
+            pendingUtterances.set(0)
+        }
         try {
             tts?.stop()
         } catch (_: Exception) {
@@ -255,9 +297,12 @@ class TtsController(context: Context) {
 
     fun shutdown() {
         handler.removeCallbacks(idleShutdown)
+        handler.removeCallbacks(forceIdle)
         pending.clear()
-        generation.incrementAndGet()
-        pendingUtterances.set(0)
+        synchronized(lock) {
+            generation.incrementAndGet()
+            pendingUtterances.set(0)
+        }
         abandonFocus()
         try {
             tts?.stop()
@@ -313,5 +358,6 @@ class TtsController(context: Context) {
         private const val TAG = "ReadAskTts"
         private const val INIT_RETRY_MS = 5_000L
         private const val IDLE_TIMEOUT_MS = 180_000L
+        private const val MAX_UTTERANCE_MS = 15 * 60_000L
     }
 }

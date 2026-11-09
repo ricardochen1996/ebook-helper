@@ -131,10 +131,10 @@ class SettingsActivity : AppCompatActivity() {
         })
         binding.btnTtsTest.setOnClickListener {
             App.tts.setRate(App.settings.ttsRate)
+            // 即使上次失败也继续调用 speak()：它会重新 init，成功后补播样例。
+            App.tts.speak(getString(R.string.settings_tts_sample), flush = true)
             if (App.tts.state.value == TtsController.State.UNAVAILABLE) {
                 toast(App.tts.lastError.ifEmpty { getString(R.string.settings_tts_missing) })
-            } else {
-                App.tts.speak(getString(R.string.settings_tts_sample), flush = true)
             }
         }
         // 设置页需要显示真实的 TTS 引擎状态；仅在语音朗读开启时按需初始化，
