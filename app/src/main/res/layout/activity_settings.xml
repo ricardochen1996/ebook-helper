@@ -130,7 +130,7 @@
             android:layout_marginTop="4dp"
             android:background="@drawable/bg_input"
             android:hint="@string/settings_api_key_hint"
-            android:inputType="textPassword"
+            android:inputType="text"
             android:padding="12dp"
             android:singleLine="true"
             android:textColor="@color/ink"
