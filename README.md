@@ -222,6 +222,44 @@ adb shell settings put secure enabled_accessibility_services \
   com.booxai.helper/com.booxai.helper.accessibility.WeReadAccessibilityService
 ```
 
+### GitHub Actions release 构建
+
+正式包需要把 release keystore 配成仓库 Secrets。**GitHub Secrets 不是 GitHub 提供的，
+是你自己写入的加密变量**：
+
+仓库 → Settings → Secrets and variables → Actions → New repository secret
+
+需要 4 个：
+
+| Secret 名称 | 值 |
+|---|---|
+| `ANDROID_KEYSTORE_BASE64` | `base64 < keystore/readask-release.jks` 的单行结果 |
+| `ANDROID_KEYSTORE_PASSWORD` | `keystore.properties` 里的 `storePassword` |
+| `ANDROID_KEY_ALIAS` | `keystore.properties` 里的 `keyAlias` |
+| `ANDROID_KEY_PASSWORD` | `keystore.properties` 里的 `keyPassword` |
+
+本机已有 keystore + properties 时，一条命令写入（值不会打印）：
+
+```bash
+tools/setup_release_secrets.sh \
+  /path/to/readask-release.jks \
+  /path/to/keystore.properties
+```
+
+然后到 GitHub → Actions → **Android Release Build** → Run workflow，或：
+
+```bash
+gh workflow run android-release.yml --repo ricardochen1996/reader-helper
+```
+
+产物：
+
+- Actions artifact：`reader-helper-release`
+- `release-artifacts` 分支：`reader-helper-release.apk`
+
+注意：正式包 keystore 必须和已安装正式包一致（证书 SHA-256 见下方「签名」）。
+如果 keystore 丢失，新建签名后必须卸载旧包再安装，会话历史会丢失。
+
 ## 隐私
 
 - 书页文字只在你点「提问」时发送到你配置的 AI 接口。
