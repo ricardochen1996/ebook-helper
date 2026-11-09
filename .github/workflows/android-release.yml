@@ -84,6 +84,26 @@ jobs:
           path: app/build/outputs/apk/release/app-release.apk
           retention-days: 14
 
+      - name: Create or update GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          VERSION=$(grep -oP 'versionName = "\K[^"]+' app/build.gradle.kts | head -n1)
+          TAG="v${VERSION}"
+          ASSET="app/build/outputs/apk/release/app-release.apk"
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$TAG" "$ASSET#reader-helper-release.apk" \
+              --clobber --repo "$GITHUB_REPOSITORY"
+          else
+            gh release create "$TAG" "$ASSET#reader-helper-release.apk" \
+              --repo "$GITHUB_REPOSITORY" \
+              --target "$GITHUB_SHA" \
+              --title "伴读 ${VERSION}" \
+              --generate-notes \
+              --latest
+          fi
+
       # 方便本机直接 git fetch 这个分支拿正式包。
       - name: Publish APK to release-artifacts branch
         env:

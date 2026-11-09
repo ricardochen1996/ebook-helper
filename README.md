@@ -97,7 +97,13 @@ export ANDROID_HOME=$HOME/Library/Android/sdk
 tools/setup_release_secrets.sh /path/to/readask-release.jks /path/to/keystore.properties
 ```
 
-正式包产物：Actions artifact `reader-helper-release`，或 `release-artifacts` 分支的 `reader-helper-release.apk`。
+正式包构建成功后会自动创建/更新 **GitHub Release**（tag `v版本号`），同时保留：
+
+- GitHub Release asset：`reader-helper-release.apk`
+- Actions artifact：`reader-helper-release`
+- `release-artifacts` 分支
+
+Release 下载页：<https://github.com/ricardochen1996/elink-reader-helper/releases>
 
 ## 签名
 

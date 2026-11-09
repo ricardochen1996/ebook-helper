@@ -13,7 +13,7 @@ fi
 
 KEYSTORE="$1"
 PROPS="$2"
-REPO="${REPO:-ricardochen1996/reader-helper}"
+REPO="${REPO:-ricardochen1996/elink-reader-helper}"
 
 for f in "$KEYSTORE" "$PROPS"; do
     if [ ! -f "$f" ]; then
