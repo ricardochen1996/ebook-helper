@@ -26,7 +26,10 @@ class TtsController(context: Context) {
     private val pending = mutableListOf<Pair<String, Boolean>>()
     private val handler = Handler(Looper.getMainLooper())
     private val idleShutdown = Runnable { shutdown() }
-    private val speakingCount = AtomicInteger(0)
+    // 已入队但尚未播完的句子数（包含还没 onStart 的），用于判断队列真正播完。
+    private val pendingUtterances = AtomicInteger(0)
+    // 每次 QUEUE_FLUSH 换一代，旧一代的 onDone/onStop 不再影响新队列计数。
+    private val generation = AtomicInteger(0)
 
     private var tts: TextToSpeech? = null
     private var focusRequest: AudioFocusRequest? = null
@@ -129,17 +132,18 @@ class TtsController(context: Context) {
         engine.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
             override fun onStart(utteranceId: String?) {
                 handler.removeCallbacks(idleShutdown)
-                speakingCount.incrementAndGet()
             }
 
-            override fun onDone(utteranceId: String?) = onUtteranceFinished()
+            override fun onDone(utteranceId: String?) = onUtteranceFinished(utteranceId)
 
             @Deprecated("Deprecated in Java")
-            override fun onError(utteranceId: String?) = onUtteranceFinished()
+            override fun onError(utteranceId: String?) = onUtteranceFinished(utteranceId)
 
-            override fun onError(utteranceId: String?, errorCode: Int) = onUtteranceFinished()
+            override fun onError(utteranceId: String?, errorCode: Int) =
+                onUtteranceFinished(utteranceId)
 
-            override fun onStop(utteranceId: String?, interrupted: Boolean) = onUtteranceFinished()
+            override fun onStop(utteranceId: String?, interrupted: Boolean) =
+                onUtteranceFinished(utteranceId)
         })
         _state.value = State.READY
         lastError = ""
@@ -149,8 +153,11 @@ class TtsController(context: Context) {
     /**
      * 队列播完后再空闲一段时间就释放引擎，避免 Google TTS 进程常驻。
      */
-    private fun onUtteranceFinished() {
-        val left = speakingCount.updateAndGet { if (it > 0) it - 1 else 0 }
+    private fun onUtteranceFinished(utteranceId: String?) {
+        // QUEUE_FLUSH 后旧队列的完成回调可能晚到，忽略非当前代。
+        val gen = utteranceId?.split('_')?.getOrNull(1)?.toIntOrNull()
+        if (gen != null && gen != generation.get()) return
+        val left = pendingUtterances.updateAndGet { if (it > 0) it - 1 else 0 }
         if (left == 0) {
             abandonFocus()
             scheduleIdleShutdown()
@@ -191,6 +198,11 @@ class TtsController(context: Context) {
         }
         val engine = tts ?: return
         requestFocus()
+        val gen = if (flush) generation.incrementAndGet() else generation.get()
+        if (flush) {
+            // QUEUE_FLUSH 会丢弃之前排队的内容，计数一并归零。
+            pendingUtterances.set(0)
+        }
         val max = 3000
         var remaining = clean
         var first = true
@@ -202,18 +214,27 @@ class TtsController(context: Context) {
             }
             remaining = remaining.substring(chunk.length)
             val mode = if (flush && first) TextToSpeech.QUEUE_FLUSH else TextToSpeech.QUEUE_ADD
-            engine.speak(chunk, mode, Bundle(), "readask_${counter.incrementAndGet()}")
+            val result = engine.speak(
+                chunk,
+                mode,
+                Bundle(),
+                "readask_${gen}_${counter.incrementAndGet()}"
+            )
+            if (result == TextToSpeech.SUCCESS) {
+                pendingUtterances.incrementAndGet()
+            }
             first = false
         }
     }
 
     fun stop() {
         pending.clear()
+        generation.incrementAndGet()
+        pendingUtterances.set(0)
         try {
             tts?.stop()
         } catch (_: Exception) {
         }
-        speakingCount.set(0)
         abandonFocus()
         scheduleIdleShutdown()
     }
@@ -221,7 +242,8 @@ class TtsController(context: Context) {
     fun shutdown() {
         handler.removeCallbacks(idleShutdown)
         pending.clear()
-        speakingCount.set(0)
+        generation.incrementAndGet()
+        pendingUtterances.set(0)
         abandonFocus()
         try {
             tts?.stop()

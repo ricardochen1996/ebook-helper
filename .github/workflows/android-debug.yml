@@ -24,6 +24,13 @@ jobs:
           distribution: temurin
           java-version: '17'
 
+      # 复用同一个 debug 签名，后续构建可以直接 adb install -r 覆盖。
+      - name: Cache debug keystore
+        uses: actions/cache@v4
+        with:
+          path: ~/.android/debug.keystore
+          key: android-debug-keystore-v1
+
       - uses: android-actions/setup-android@v3
         with:
           packages: 'platforms;android-34 build-tools;34.0.0 platform-tools'
