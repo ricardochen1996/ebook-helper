@@ -216,7 +216,7 @@ class QrConfigServer(
               <input name="model" type="text" required spellcheck="false"
                      value="${esc(currentModel)}" placeholder="deepseek-chat">
               <label>API Key</label>
-              <input name="api_key" type="password" autocomplete="off" spellcheck="false"
+              <input name="api_key" type="text" autocomplete="off" spellcheck="false"
                      placeholder="${esc(keyHint)}"$keyRequired>
               <p class="note">Key 只写入这台电子书，不经过其他服务器。</p>
               <button type="submit">保存到电子书</button>
