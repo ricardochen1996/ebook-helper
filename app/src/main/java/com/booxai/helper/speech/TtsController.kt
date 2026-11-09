@@ -32,6 +32,13 @@ class TtsController(context: Context) {
     private val generation = AtomicInteger(0)
     // 保护 generation + pendingUtterances 的复合操作（主线程与 TTS 回调线程）。
     private val lock = Any()
+
+    private var tts: TextToSpeech? = null
+    private var focusRequest: AudioFocusRequest? = null
+    private var initialized = false
+    @Volatile
+    private var focusHeld = false
+    private var lastInitAttemptAt = 0L
     // 引擎进程死亡等极端情况下可能收不到完成回调，兜底释放。
     private val forceIdle = Runnable {
         val stuck = synchronized(lock) {
@@ -52,13 +59,6 @@ class TtsController(context: Context) {
             scheduleIdleShutdown()
         }
     }
-
-    private var tts: TextToSpeech? = null
-    private var focusRequest: AudioFocusRequest? = null
-    private var initialized = false
-    @Volatile
-    private var focusHeld = false
-    private var lastInitAttemptAt = 0L
 
     private val _state = MutableStateFlow(State.IDLE)
     val state: StateFlow<State> = _state
@@ -154,6 +154,8 @@ class TtsController(context: Context) {
         engine.setPitch(1.0f)
         engine.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
             override fun onStart(utteranceId: String?) {
+                val gen = generationOf(utteranceId)
+                if (gen != null && gen != generation.get()) return
                 handler.removeCallbacks(idleShutdown)
             }
 
@@ -180,10 +182,13 @@ class TtsController(context: Context) {
     /**
      * 队列播完后再空闲一段时间就释放引擎，避免 Google TTS 进程常驻。
      */
+    private fun generationOf(utteranceId: String?): Int? =
+        utteranceId?.split('_')?.getOrNull(1)?.toIntOrNull()
+
     private fun onUtteranceFinished(utteranceId: String?) {
         val left = synchronized(lock) {
             // QUEUE_FLUSH 后旧队列的完成回调可能晚到，忽略非当前代。
-            val gen = utteranceId?.split('_')?.getOrNull(1)?.toIntOrNull()
+            val gen = generationOf(utteranceId)
             if (gen != null && gen != generation.get()) return
             pendingUtterances.updateAndGet { if (it > 0) it - 1 else 0 }
         }
@@ -205,6 +210,11 @@ class TtsController(context: Context) {
     private fun fail(message: String) {
         lastError = message
         languageOk = false
+        handler.removeCallbacks(forceIdle)
+        synchronized(lock) {
+            generation.incrementAndGet()
+            pendingUtterances.set(0)
+        }
         // 失败/不可用时释放旧引擎，避免重试时覆盖实例但旧绑定还活着。
         try {
             tts?.shutdown()
@@ -256,16 +266,22 @@ class TtsController(context: Context) {
             }
             remaining = remaining.substring(chunk.length)
             val mode = if (flush && first) TextToSpeech.QUEUE_FLUSH else TextToSpeech.QUEUE_ADD
-            val result = engine.speak(
-                chunk,
-                mode,
-                Bundle(),
-                "readask_${gen}_${counter.incrementAndGet()}"
-            )
-            if (result == TextToSpeech.SUCCESS) {
-                synchronized(lock) { pendingUtterances.incrementAndGet() }
-            } else {
-                val empty = synchronized(lock) { pendingUtterances.get() == 0 }
+            // 先计数再入队，避免极快的 onDone/onError 先于计数到达。
+            synchronized(lock) { pendingUtterances.incrementAndGet() }
+            val result = try {
+                engine.speak(
+                    chunk,
+                    mode,
+                    Bundle(),
+                    "readask_${gen}_${counter.incrementAndGet()}"
+                )
+            } catch (_: Exception) {
+                TextToSpeech.ERROR
+            }
+            if (result != TextToSpeech.SUCCESS) {
+                val empty = synchronized(lock) {
+                    pendingUtterances.updateAndGet { if (it > 0) it - 1 else 0 } == 0
+                }
                 if (empty) {
                     // 引擎直接拒绝且队列为空，别把音频焦点一直占着。
                     abandonFocus()
