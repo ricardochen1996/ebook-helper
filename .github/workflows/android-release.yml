@@ -92,11 +92,13 @@ jobs:
           VERSION=$(grep -oP 'versionName = "\K[^"]+' app/build.gradle.kts | head -n1)
           TAG="v${VERSION}"
           ASSET="app/build/outputs/apk/release/app-release.apk"
+          NAMED_ASSET="/tmp/reader-helper-release.apk"
+          cp "$ASSET" "$NAMED_ASSET"
           if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh release upload "$TAG" "$ASSET#reader-helper-release.apk" \
+            gh release upload "$TAG" "$NAMED_ASSET" \
               --clobber --repo "$GITHUB_REPOSITORY"
           else
-            gh release create "$TAG" "$ASSET#reader-helper-release.apk" \
+            gh release create "$TAG" "$NAMED_ASSET" \
               --repo "$GITHUB_REPOSITORY" \
               --target "$GITHUB_SHA" \
               --title "伴读 ${VERSION}" \

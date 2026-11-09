@@ -103,7 +103,7 @@ tools/setup_release_secrets.sh /path/to/readask-release.jks /path/to/keystore.pr
 - Actions artifact：`reader-helper-release`
 - `release-artifacts` 分支
 
-Release 下载页：<https://github.com/ricardochen1996/elink-reader-helper/releases>
+Release 下载页：<https://github.com/ricardochen1996/ebook-helper/releases>
 
 ## 签名
 
