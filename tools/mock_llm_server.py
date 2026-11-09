@@ -57,6 +57,21 @@ class Handler(BaseHTTPRequestHandler):
             payload = {}
         print("[mock] request", self.path, json.dumps(payload, ensure_ascii=False)[:1200],
               file=sys.stderr)
+        for message in payload.get("messages", []):
+            content = message.get("content")
+            if isinstance(content, list):
+                parts = []
+                for part in content:
+                    kind = part.get("type")
+                    if kind == "image_url":
+                        url = (part.get("image_url") or {}).get("url", "")
+                        parts.append(f"image_url(len={len(url)})")
+                    elif kind == "image":
+                        data = (part.get("source") or {}).get("data", "")
+                        parts.append(f"image(len={len(data)})")
+                    else:
+                        parts.append(str(kind))
+                print("[mock] parts", message.get("role"), parts, file=sys.stderr)
 
         if "messages" in self.path:
             self.anthropic_stream(payload)

@@ -138,7 +138,7 @@
     <string name="settings_clear_keys_confirm">确定清除已保存的 API Key？</string>
     <string name="settings_cleared">已清除</string>
     <string name="settings_section_about">关于</string>
-    <string name="settings_about_text">伴读 0.1.1\n个人自用工具：不提供后端，不收集数据。只在你点击提问时发送当前页文字/截图到你配置的 AI 接口。请遵守微信读书的服务条款，仅用于个人阅读辅助。</string>
+    <string name="settings_about_text">伴读 0.1.2\n个人自用工具：不提供后端，不收集数据。只在你点击提问时发送当前页文字/截图到你配置的 AI 接口。请遵守微信读书的服务条款，仅用于个人阅读辅助。</string>
 
     <string name="notification_channel">悬浮球</string>
     <string name="notification_title">伴读正在运行</string>
