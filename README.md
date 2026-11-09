@@ -110,8 +110,11 @@ A：文石 EAC 自动冻结可能连前台服务一起冻结。必须给「读�
 Release APK 使用项目根目录的 `keystore/readask-release.jks` 签名（密码在 `keystore.properties`）。证书 SHA-256：
 
 ```
-ac089f798ac9dc3ece7b4d1883f5a450f7da2b5836bbcca9190d165261033092
+1b13719e3ebc5e4e86f08a69250681d7f52cefbea19cef928d22616f9adec8ed
 ```
+
+> 2026-11-09：旧的 release keystore 丢失，已重新生成一套签名。旧签名的正式包必须卸载后才能安装新包；会话历史会丢失。
+> 请务必备份 `keystore/readask-release.jks` 和 `keystore.properties`（两者已在 `.gitignore` 中，不会进仓库）；丢失后再次升级仍需卸载重装。
 
 请保管好 keystore；后续升级必须使用同一签名，否则需要先卸载旧版。
 
