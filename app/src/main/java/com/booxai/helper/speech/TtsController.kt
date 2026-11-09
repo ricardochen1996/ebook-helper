@@ -226,6 +226,10 @@ class TtsController(context: Context) {
             )
             if (result == TextToSpeech.SUCCESS) {
                 pendingUtterances.incrementAndGet()
+            } else if (pendingUtterances.get() == 0) {
+                // 引擎直接拒绝且队列为空，别把音频焦点一直占着。
+                abandonFocus()
+                scheduleIdleShutdown()
             }
             first = false
         }
@@ -256,6 +260,7 @@ class TtsController(context: Context) {
         }
         tts = null
         initialized = false
+        lastInitAttemptAt = 0L
         _state.value = State.INITIALIZING
     }
 
