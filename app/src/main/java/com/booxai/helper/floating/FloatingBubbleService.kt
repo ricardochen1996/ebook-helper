@@ -178,6 +178,7 @@ class FloatingBubbleService : Service() {
                     startY = layoutParams.y
                     moved = false
                     longPressFired = false
+                    lastDragUpdateAt = 0L
                     scheduleLongPress()
                 }
 

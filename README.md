@@ -165,6 +165,47 @@ adb reverse tcp:8765 tcp:8765
 # App 设置：Base URL=http://127.0.0.1:8765/v1，Key=test，模型=mock
 ```
 
+### GitHub Actions debug 构建
+
+推送到 `main` 会自动运行 `.github/workflows/android-debug.yml`：
+
+- Actions artifact：`reader-helper-debug`
+- 同时把 APK 推到 `build-artifacts` 分支，方便本机直接取：
+  ```bash
+  git fetch origin build-artifacts
+  git show FETCH_HEAD:reader-helper-debug.apk > /tmp/reader-helper-debug.apk
+  adb install -r /tmp/reader-helper-debug.apk
+  ```
+
+debug 包的 applicationId 是 `com.booxai.helper.debug`，可以和正式包同时安装，不会覆盖正式包的会话数据。
+
+真机联调（debug 包）：
+
+```bash
+# 悬浮窗权限
+adb shell appops set com.booxai.helper.debug SYSTEM_ALERT_WINDOW allow
+
+# 调试期间只启用 debug 的无障碍服务（会临时替换正式包的服务）
+adb shell settings put secure enabled_accessibility_services \
+  com.booxai.helper.debug/com.booxai.helper.accessibility.WeReadAccessibilityService
+adb shell settings put secure accessibility_enabled 1
+
+# 配 mock LLM（配合上面的 adb reverse）
+adb shell am start -n com.booxai.helper.debug/com.booxai.helper.DebugConfigActivity \
+  --es base_url http://127.0.0.1:8765/v1 --es model mock --es api_key test --es protocol openai
+
+# 抓取当前微信读书页面，日志里看 len / byId / preview
+adb logcat -s ReadAskDebug
+adb shell am start -n com.booxai.helper.debug/com.booxai.helper.DebugConfigActivity --ez debug_capture true
+```
+
+调试完把正式包的无障碍服务恢复：
+
+```bash
+adb shell settings put secure enabled_accessibility_services \
+  com.booxai.helper/com.booxai.helper.accessibility.WeReadAccessibilityService
+```
+
 ## 隐私
 
 - 书页文字只在你点「提问」时发送到你配置的 AI 接口。

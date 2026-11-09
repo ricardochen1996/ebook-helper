@@ -136,9 +136,11 @@ class SettingsActivity : AppCompatActivity() {
                 App.tts.speak(getString(R.string.settings_tts_sample), flush = true)
             }
         }
-        // 设置页需要显示真实的 TTS 引擎状态，这里按需初始化一次；
+        // 设置页需要显示真实的 TTS 引擎状态；仅在语音朗读开启时按需初始化，
         // 离开后若一直没朗读，TtsController 会空闲自动释放。
-        App.tts.init()
+        if (App.settings.ttsEnabled) {
+            App.tts.init()
+        }
         updateTtsStatus(App.tts.state.value)
 
         binding.btnA11y.setOnClickListener { openAccessibilitySettings() }
