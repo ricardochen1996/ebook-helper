@@ -1,4 +1,4 @@
-# 读问 AI（boox-ai-helper）技术方案
+# 伴读（boox-ai-helper）技术方案
 
 > 目标设备：文石 BOOX Leaf3（Android 11 / API 30）
 > 主力阅读 App：微信读书墨水屏版 `com.tencent.weread.eink`
