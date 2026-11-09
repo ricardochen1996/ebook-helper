@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">读问 AI</string>
+    <string name="accessibility_label">读问 AI 阅读助手</string>
+    <string name="accessibility_description">读取微信读书当前页的文字，回答你的问题。只在点击悬浮球时读取，不会保存或上传未经你操作的内容。</string>
+
+    <string name="setup_title">使用前准备</string>
+    <string name="setup_overlay_ok">悬浮窗权限：已开启</string>
+    <string name="setup_overlay_missing">悬浮窗权限：未开启</string>
+    <string name="setup_a11y_ok">无障碍服务：已开启</string>
+    <string name="setup_a11y_missing">无障碍服务：未开启</string>
+    <string name="setup_a11y_not_connected">无障碍服务：已授权但未连接，请到系统设置里关闭再开启一次</string>
+    <string name="setup_api_ok">AI 接口：已配置</string>
+    <string name="setup_api_missing">AI 接口：未配置</string>
+    <string name="setup_open_overlay">开启悬浮窗权限</string>
+    <string name="setup_open_a11y">开启无障碍服务</string>
+    <string name="setup_open_api">配置 AI 接口</string>
+    <string name="setup_start_bubble">启动悬浮球</string>
+    <string name="open_panel_test">打开面板测试语音</string>
+    <string name="setup_done">一切就绪。打开微信读书，点悬浮球提问。</string>
+    <string name="setup_ready">准备就绪</string>
+
+    <string name="my_books">我的书籍</string>
+    <string name="empty_books">还没有会话。打开微信读书，点悬浮球问一个问题吧。</string>
+    <string name="no_sessions">这本书还没有会话。</string>
+    <string name="settings">设置</string>
+    <string name="back">返回</string>
+
+    <string name="book_unknown">未命名书籍</string>
+    <string name="book_title">书名</string>
+    <string name="book_title_hint">输入或确认书名</string>
+    <string name="book_title_save">保存书名</string>
+    <string name="book_title_help">书名用于把同一本书的会话归档。打开微信读书目录时会自动识别；也可以在这里手动填写。</string>
+
+    <string name="panel_close">关闭</string>
+    <string name="panel_edit">改</string>
+    <string name="panel_page_label">当前书页</string>
+    <string name="panel_page_empty">未抓取到书页文字。请回到微信读书翻页后重新点悬浮球。</string>
+    <string name="panel_expand">展开</string>
+    <string name="panel_collapse">收起</string>
+    <string name="panel_question_hint">输入你的问题…</string>
+    <string name="panel_ask">提问</string>
+    <string name="panel_stop">停止</string>
+    <string name="panel_new_session">新会话</string>
+    <string name="panel_history">历史</string>
+    <string name="panel_tts_on">朗读：开</string>
+    <string name="panel_tts_off">朗读：关</string>
+    <string name="panel_voice">按住说话</string>
+    <string name="voice_release_to_stop">松开结束</string>
+    <string name="voice_processing">识别中…</string>
+    <string name="voice_listening">正在听…</string>
+    <string name="voice_done">识别完成</string>
+    <string name="voice_empty">没听清，请再说一次</string>
+    <string name="voice_permission_denied">需要麦克风权限</string>
+    <string name="voice_permission_granted">麦克风权限已授予，请按住说话</string>
+    <string name="voice_unavailable_hint">也可以点键盘上的麦克风输入</string>
+    <string name="panel_voice_unavailable">未配置语音识别</string>
+    <string name="panel_thinking">思考中…</string>
+    <string name="panel_ready">就绪</string>
+    <string name="panel_no_page">当前没有书页内容，回答可能不针对原文。</string>
+    <string name="panel_capture_empty">没有读到微信读书的页面。请确认微信读书在前台，并已开启无障碍服务。</string>
+    <string name="panel_ask_first">在下面输入问题，AI 会结合当前书页回答并朗读。</string>
+    <string name="panel_you">你</string>
+    <string name="panel_ai">AI</string>
+    <string name="panel_interrupted">（已停止）</string>
+    <string name="panel_error">出错：%1$s</string>
+    <string name="panel_need_config">请先在设置里配置 AI 接口。</string>
+    <string name="panel_title_hint">书名未识别：打开一次微信读书目录可自动识别，或点“改”手动填写。</string>
+    <string name="panel_continue">继续此会话</string>
+
+    <string name="settings_title">设置</string>
+    <string name="settings_section_ai">AI 服务（BYOK）</string>
+    <string name="settings_preset">服务商预设</string>
+    <string name="settings_protocol">协议</string>
+    <string name="settings_protocol_openai">OpenAI 兼容</string>
+    <string name="settings_protocol_anthropic">Anthropic</string>
+    <string name="settings_base_url">Base URL</string>
+    <string name="settings_base_url_hint">例如 https://api.deepseek.com</string>
+    <string name="settings_model">模型</string>
+    <string name="settings_model_hint">例如 deepseek-chat</string>
+    <string name="settings_api_key">API Key</string>
+    <string name="settings_api_key_hint">留空表示不修改已保存的 Key</string>
+    <string name="settings_save">保存配置</string>
+    <string name="settings_test">测试连接</string>
+    <string name="settings_saved">已保存</string>
+    <string name="settings_testing">测试中…</string>
+    <string name="settings_test_ok">连接成功：%1$s</string>
+    <string name="settings_test_fail">连接失败：%1$s</string>
+    <string name="settings_key_saved">已保存 Key（尾号 %1$s）</string>
+    <string name="settings_key_none">未保存 Key</string>
+
+    <string name="settings_section_speech">语音</string>
+    <string name="settings_tts_enabled">回答后自动朗读</string>
+    <string name="settings_tts_rate">语速</string>
+    <string name="settings_tts_test">试听</string>
+    <string name="settings_tts_status">TTS 状态：%1$s</string>
+    <string name="settings_tts_ok">中文语音可用</string>
+    <string name="settings_tts_missing">中文语音不可用，请安装/切换 TTS 引擎</string>
+    <string name="settings_tts_init">正在初始化…</string>
+    <string name="settings_tts_sample">你好，我是读问 AI，正在为你朗读。</string>
+
+    <string name="settings_section_reading">阅读与权限</string>
+    <string name="settings_a11y_status">无障碍服务：%1$s</string>
+    <string name="settings_a11y_not_connected">已授权但未连接（请在系统设置里关闭再开启）</string>
+    <string name="settings_overlay_status">悬浮窗权限：%1$s</string>
+    <string name="settings_on">已开启</string>
+    <string name="settings_off">未开启</string>
+    <string name="settings_open_a11y">去开启无障碍</string>
+    <string name="settings_open_overlay">去授权悬浮窗</string>
+    <string name="settings_test_capture">测试读取微信读书</string>
+    <string name="settings_capture_result">抓到 %1$d 字，书名：%2$s</string>
+    <string name="settings_capture_fail">没有读到微信读书页面。请先打开微信读书。</string>
+    <string name="settings_book_title_auto">打开目录时自动识别书名</string>
+    <string name="settings_battery_hint">如果悬浮球被系统清理，请在系统设置中允许本应用后台运行/关闭应用冻结。</string>
+
+    <string name="settings_section_data">数据</string>
+    <string name="settings_clear_history">清空全部会话</string>
+    <string name="settings_clear_history_confirm">确定删除全部书籍、会话和消息？此操作不可撤销。</string>
+    <string name="settings_clear_keys">清除已保存的 Key</string>
+    <string name="settings_clear_keys_confirm">确定清除已保存的 API Key？</string>
+    <string name="settings_cleared">已清除</string>
+    <string name="settings_section_about">关于</string>
+    <string name="settings_about_text">读问 AI 0.1.0\n个人自用工具：不提供后端，不收集数据。书页文字只在你点击提问时发送到你配置的 AI 接口。请遵守微信读书的服务条款，仅用于个人阅读辅助。</string>
+
+    <string name="notification_channel">悬浮球</string>
+    <string name="notification_title">读问 AI 正在运行</string>
+    <string name="notification_text">点悬浮球向 AI 提问</string>
+    <string name="notification_stop">停止</string>
+    <string name="toast_no_overlay">请先授予悬浮窗权限</string>
+    <string name="toast_no_a11y">请先开启读问 AI 的无障碍服务</string>
+    <string name="toast_not_weread">请先打开微信读书</string>
+    <string name="toast_bubble_started">悬浮球已启动</string>
+    <string name="toast_need_config">请先在 App 设置里配置 AI 接口</string>
+
+    <string name="dialog_cancel">取消</string>
+    <string name="dialog_ok">确定</string>
+    <string name="dialog_delete">删除</string>
+</resources>

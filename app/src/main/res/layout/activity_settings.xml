@@ -1,0 +1,338 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/paper"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="20dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/btnBack"
+                style="@style/Widget.ReadAsk.PlainButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/back" />
+
+            <TextView
+                style="@style/Text.ReadAsk.Section"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginLeft="12dp"
+                android:layout_weight="1"
+                android:text="@string/settings_title" />
+        </LinearLayout>
+
+        <TextView
+            style="@style/Text.ReadAsk.Section"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:text="@string/settings_section_ai" />
+
+        <TextView
+            style="@style/Text.ReadAsk.Muted"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/settings_preset" />
+
+        <Spinner
+            android:id="@+id/spinnerPreset"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:layout_marginTop="4dp"
+            android:background="@drawable/bg_input"
+            android:paddingLeft="8dp"
+            android:paddingRight="8dp"
+            android:spinnerMode="dialog" />
+
+        <TextView
+            style="@style/Text.ReadAsk.Muted"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/settings_protocol" />
+
+        <Spinner
+            android:id="@+id/spinnerProtocol"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:layout_marginTop="4dp"
+            android:background="@drawable/bg_input"
+            android:paddingLeft="8dp"
+            android:paddingRight="8dp"
+            android:spinnerMode="dialog" />
+
+        <TextView
+            style="@style/Text.ReadAsk.Muted"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/settings_base_url" />
+
+        <EditText
+            android:id="@+id/etBaseUrl"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:background="@drawable/bg_input"
+            android:hint="@string/settings_base_url_hint"
+            android:inputType="textUri"
+            android:padding="12dp"
+            android:singleLine="true"
+            android:textColor="@color/ink"
+            android:textColorHint="@color/muted"
+            android:textSize="16sp" />
+
+        <TextView
+            style="@style/Text.ReadAsk.Muted"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/settings_model" />
+
+        <EditText
+            android:id="@+id/etModel"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:background="@drawable/bg_input"
+            android:hint="@string/settings_model_hint"
+            android:inputType="text"
+            android:padding="12dp"
+            android:singleLine="true"
+            android:textColor="@color/ink"
+            android:textColorHint="@color/muted"
+            android:textSize="16sp" />
+
+        <TextView
+            style="@style/Text.ReadAsk.Muted"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/settings_api_key" />
+
+        <EditText
+            android:id="@+id/etApiKey"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:background="@drawable/bg_input"
+            android:hint="@string/settings_api_key_hint"
+            android:inputType="textPassword"
+            android:padding="12dp"
+            android:singleLine="true"
+            android:textColor="@color/ink"
+            android:textColorHint="@color/muted"
+            android:textSize="16sp" />
+
+        <TextView
+            android:id="@+id/tvKeyStatus"
+            style="@style/Text.ReadAsk.Muted"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/btnSave"
+                style="@style/Widget.ReadAsk.Button.Primary"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/settings_save" />
+
+            <TextView
+                android:id="@+id/btnTest"
+                style="@style/Widget.ReadAsk.PlainButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginLeft="8dp"
+                android:layout_weight="1"
+                android:text="@string/settings_test" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/tvTestStatus"
+            style="@style/Text.ReadAsk.Body"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp" />
+
+        <TextView
+            style="@style/Text.ReadAsk.Section"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="22dp"
+            android:text="@string/settings_section_speech" />
+
+        <Switch
+            android:id="@+id/switchTts"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:text="@string/settings_tts_enabled"
+            android:textColor="@color/ink"
+            android:textSize="16sp" />
+
+        <TextView
+            android:id="@+id/tvTtsRate"
+            style="@style/Text.ReadAsk.Muted"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp" />
+
+        <SeekBar
+            android:id="@+id/seekTtsRate"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:max="100"
+            android:progress="50" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/tvTtsStatus"
+                style="@style/Text.ReadAsk.Muted"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1" />
+
+            <TextView
+                android:id="@+id/btnTtsTest"
+                style="@style/Widget.ReadAsk.PlainButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/settings_tts_test" />
+        </LinearLayout>
+
+        <TextView
+            style="@style/Text.ReadAsk.Section"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="22dp"
+            android:text="@string/settings_section_reading" />
+
+        <TextView
+            android:id="@+id/tvA11yStatus"
+            style="@style/Text.ReadAsk.Body"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp" />
+
+        <TextView
+            android:id="@+id/btnA11y"
+            style="@style/Widget.ReadAsk.PlainButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:text="@string/settings_open_a11y" />
+
+        <TextView
+            android:id="@+id/tvOverlayStatus"
+            style="@style/Text.ReadAsk.Body"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp" />
+
+        <TextView
+            android:id="@+id/btnOverlay"
+            style="@style/Widget.ReadAsk.PlainButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:text="@string/settings_open_overlay" />
+
+        <Switch
+            android:id="@+id/switchAutoTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:text="@string/settings_book_title_auto"
+            android:textColor="@color/ink"
+            android:textSize="16sp" />
+
+        <TextView
+            android:id="@+id/btnTestCapture"
+            style="@style/Widget.ReadAsk.PlainButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:text="@string/settings_test_capture" />
+
+        <TextView
+            android:id="@+id/tvCaptureStatus"
+            style="@style/Text.ReadAsk.Body"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp" />
+
+        <TextView
+            style="@style/Text.ReadAsk.Muted"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:text="@string/settings_battery_hint" />
+
+        <TextView
+            style="@style/Text.ReadAsk.Section"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="22dp"
+            android:text="@string/settings_section_data" />
+
+        <TextView
+            android:id="@+id/btnClearHistory"
+            style="@style/Widget.ReadAsk.PlainButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:text="@string/settings_clear_history" />
+
+        <TextView
+            android:id="@+id/btnClearKeys"
+            style="@style/Widget.ReadAsk.PlainButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/settings_clear_keys" />
+
+        <TextView
+            style="@style/Text.ReadAsk.Section"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="22dp"
+            android:text="@string/settings_section_about" />
+
+        <TextView
+            android:id="@+id/tvAbout"
+            style="@style/Text.ReadAsk.Muted"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/settings_about_text" />
+
+    </LinearLayout>
+</ScrollView>
