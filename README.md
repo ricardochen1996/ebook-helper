@@ -11,7 +11,7 @@
 
 - 微信读书当前页正文直接暴露在无障碍树的 `content-desc` 中（`book_page` 子树），**不需要截图 / OCR / root**。
 - 目录面板顶部的 TextView 是书名，打开目录时可自动缓存；阅读页本身不显示书名。
-- 系统有内置麦克风、扬声器、Google TTS；Android 没有标准 `RecognitionService`，但文石 ksync 提供了 **`KCommonSpeechService`**（exported、无 `android:permission` 校验），App 已通过 AIDL 复用：本机实测自动选中 **阿里云 ASR**，识别出完整句子。
+- 系统有内置麦克风、扬声器；本机 Leaf3 固件没有文石自有 TTS 引擎，系统里唯一的 `android.intent.action.TTS_SERVICE` 是预装的 **Google TTS**（`SpeechServicesByGoogle`）。App 默认使用系统 TTS，初始化失败时才显式回退 Google TTS。Android 没有标准 `RecognitionService`，但文石 ksync 提供了 **`KCommonSpeechService`**（exported、无 `android:permission` 校验），App 已通过 AIDL 复用：本机实测自动选中 **阿里云 ASR**，识别出完整句子。
 
 ## 功能（当前版本）
 
@@ -19,7 +19,7 @@
 - 取词：无障碍 content-desc，本地毫秒级
 - 问答：OpenAI 兼容 / Anthropic 流式 SSE；DeepSeek、通义千问、Kimi、智谱、OpenAI、Claude 预设 + 自定义
 - 语音提问：面板底部「按住说话」，复用文石系统 ASR（本机为阿里云引擎），识别结果自动填入提问框
-- 语音回答：系统 TTS（Google TTS，中文），按句流式朗读；可调语速
+- 语音回答：系统默认 TTS（本机为预装 Google TTS，中文），按句流式朗读；可调语速
 - 归档：Room 本地数据库，书籍 → 会话 → 消息；同一本书的会话自动聚合
 - 安全：API Key 用 Android Keystore AES-GCM 加密，`allowBackup=false`，日志不打印 Key
 - 墨水屏 UI：白底黑字、无动画、大按钮、流式文本节流

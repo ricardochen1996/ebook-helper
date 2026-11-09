@@ -89,7 +89,9 @@ class TtsController(context: Context) {
         lastInitAttemptAt = now
         initialized = true
         _state.value = State.INITIALIZING
-        createEngine("com.google.android.tts", 0)
+        // 优先用系统默认 TTS（Leaf3 上唯一的 TTS 引擎就是预装的 Google TTS）；
+        // 系统默认初始化失败时再显式回退 Google TTS。
+        createEngine(null, 0)
     }
 
     private fun createEngine(engine: String?, attempt: Int) {
@@ -107,7 +109,7 @@ class TtsController(context: Context) {
                 } catch (_: Exception) {
                 }
                 tts = null
-                createEngine(null, 1)
+                createEngine("com.google.android.tts", 1)
             } else {
                 fail("TTS 初始化失败（status=$status）")
             }
