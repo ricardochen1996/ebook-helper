@@ -8,7 +8,7 @@ import com.booxai.helper.data.SecretStore
 /**
  * 仅 debug 构建包含：通过 adb 快速写入 API 配置，便于真机联调。
  *
- * adb shell am start -n com.booxai.helper/.DebugConfigActivity \
+ * adb shell am start -n com.booxai.helper.debug/com.booxai.helper.DebugConfigActivity \
  *   --es base_url http://127.0.0.1:8765/v1 --es model mock \
  *   --es api_key test --es protocol openai
  */

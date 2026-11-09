@@ -42,9 +42,12 @@ class WeReadAccessibilityService : AccessibilityService() {
         ) {
             return
         }
-        if (type == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
+        if (type == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED && App.settings.autoTitle) {
             titleCheckPending = true
         }
+        // 有新事件时先让悬浮球缓存失效；等去抖后的 extractLatest 完成再恢复，
+        // 避免翻页事件刚到、还没重新抓取时复用上一页正文。
+        ReadingState.lastCaptureAt = 0L
         // 微信读书一次翻页/目录动画会连续发很多事件。
         // 合并成一次树遍历，避免主线程被无障碍查询拖住。
         handler.removeCallbacks(extractRunnable)

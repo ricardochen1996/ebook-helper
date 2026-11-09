@@ -18,7 +18,7 @@ import java.util.concurrent.atomic.AtomicInteger
 
 class TtsController(context: Context) {
 
-    enum class State { INITIALIZING, READY, UNAVAILABLE }
+    enum class State { IDLE, INITIALIZING, READY, UNAVAILABLE }
 
     private val appContext = context.applicationContext
     private val audioManager = appContext.getSystemService(AudioManager::class.java)
@@ -37,7 +37,7 @@ class TtsController(context: Context) {
     private var focusHeld = false
     private var lastInitAttemptAt = 0L
 
-    private val _state = MutableStateFlow(State.INITIALIZING)
+    private val _state = MutableStateFlow(State.IDLE)
     val state: StateFlow<State> = _state
 
     @Volatile
@@ -176,6 +176,12 @@ class TtsController(context: Context) {
     private fun fail(message: String) {
         lastError = message
         languageOk = false
+        // 失败/不可用时释放旧引擎，避免重试时覆盖实例但旧绑定还活着。
+        try {
+            tts?.shutdown()
+        } catch (_: Exception) {
+        }
+        tts = null
         _state.value = State.UNAVAILABLE
         Log.w(TAG, message)
     }
@@ -261,7 +267,7 @@ class TtsController(context: Context) {
         tts = null
         initialized = false
         lastInitAttemptAt = 0L
-        _state.value = State.INITIALIZING
+        _state.value = State.IDLE
     }
 
     private fun flushPending() {

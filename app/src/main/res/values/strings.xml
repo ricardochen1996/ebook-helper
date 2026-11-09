@@ -97,6 +97,7 @@
     <string name="settings_tts_ok">中文语音可用</string>
     <string name="settings_tts_missing">中文语音不可用，请安装/切换 TTS 引擎</string>
     <string name="settings_tts_init">正在初始化…</string>
+    <string name="settings_tts_idle">朗读未启动，点「试听」启用</string>
     <string name="settings_tts_sample">你好，我是读问 AI，正在为你朗读。</string>
 
     <string name="settings_section_reading">阅读与权限</string>

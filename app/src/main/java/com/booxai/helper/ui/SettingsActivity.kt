@@ -113,6 +113,7 @@ class SettingsActivity : AppCompatActivity() {
         binding.switchTts.isChecked = App.settings.ttsEnabled
         binding.switchTts.setOnCheckedChangeListener { _, checked ->
             App.settings.ttsEnabled = checked
+            if (checked) App.tts.init() else App.tts.stop()
         }
         val progress = (((App.settings.ttsRate - 0.5f) / 1.0f) * 100f).toInt().coerceIn(0, 100)
         binding.seekTtsRate.progress = progress
@@ -293,6 +294,7 @@ class SettingsActivity : AppCompatActivity() {
         binding.tvTtsStatus.text = getString(
             R.string.settings_tts_status,
             when (state) {
+                TtsController.State.IDLE -> getString(R.string.settings_tts_idle)
                 TtsController.State.INITIALIZING -> getString(R.string.settings_tts_init)
                 TtsController.State.READY -> {
                     if (App.tts.languageOk) {
