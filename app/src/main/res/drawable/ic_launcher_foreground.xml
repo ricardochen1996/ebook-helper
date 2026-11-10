@@ -1,25 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  应用图标前景：复用悬浮球的「书页成话」标记。
+  标记按 48 viewBox 设计，这里放大 1.65 倍并平移到 108 viewBox 中央，
+  内容约 57x44，完整落在自适应图标 66dp 的圆形安全区内。
+-->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <path
-        android:fillColor="#FF111111"
-        android:pathData="M30,28h20a8,8 0 0 1 8,8v44H38a8,8 0 0 1 -8,-8V28z" />
-    <path
-        android:fillColor="#FFFFFFFF"
-        android:pathData="M36,34h4v40h-4z" />
-    <path
-        android:fillColor="#FF111111"
-        android:pathData="M58,50h24a6,6 0 0 1 6,6v14a6,6 0 0 1 -6,6H70l-8,8v-8h-4a6,6 0 0 1 -6,-6V56a6,6 0 0 1 6,-6z" />
-    <path
-        android:fillColor="#FFFFFFFF"
-        android:pathData="M64,60m-2,0a2,2 0 1,0 4,0a2,2 0 1,0 -4,0" />
-    <path
-        android:fillColor="#FFFFFFFF"
-        android:pathData="M72,60m-2,0a2,2 0 1,0 4,0a2,2 0 1,0 -4,0" />
-    <path
-        android:fillColor="#FFFFFFFF"
-        android:pathData="M80,60m-2,0a2,2 0 1,0 4,0a2,2 0 1,0 -4,0" />
+    <group
+        android:scaleX="1.65"
+        android:scaleY="1.65"
+        android:translateX="14.4"
+        android:translateY="14.4">
+        <path
+            android:fillColor="#FF111111"
+            android:pathData="M 6.53 29.57 L 6.53 17.18 Q 6.53 15.55 8.16 15.65 C 12.38 16.13 17.57 16.9 21.79 17.66 L 21.98 32.74 Q 23.95 35.04 25.92 32.74 L 25.82 17.66 C 28.42 17.18 30.72 16.7 32.64 16.22 C 33.7 13.92 35.71 12.19 36.48 10.75 C 37.92 12.96 39.74 15.26 41.38 17.66 L 41.38 29.57 L 24 37.63 Z" />
+    </group>
 </vector>

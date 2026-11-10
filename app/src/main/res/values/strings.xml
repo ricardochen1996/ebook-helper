@@ -140,9 +140,34 @@
     <string name="settings_clear_keys_confirm">确定清除已保存的 API Key？</string>
     <string name="settings_cleared">已清除</string>
     <string name="settings_section_about">关于</string>
-    <string name="settings_about_text">伴读 1.0.0\n个人自用工具：不提供后端，不收集数据。只在你点击提问时发送当前页文字/截图到你配置的 AI 接口。请遵守微信读书的服务条款，仅用于个人阅读辅助。</string>
+    <string name="settings_version">当前版本：%1$s (%2$d)</string>
+    <string name="settings_check_update">检查更新</string>
+    <string name="settings_auto_update">自动检查更新</string>
+    <string name="settings_install_update">安装已下载的更新</string>
+    <string name="settings_update_latest">已是最新版本</string>
+    <string name="settings_update_checking">正在检查更新…</string>
+    <string name="settings_update_failed">检查失败：%1$s</string>
+    <string name="settings_update_debug">调试包不检查更新</string>
+    <string name="settings_update_found">发现新版本 %1$s</string>
+    <string name="settings_about_text">个人自用工具：不提供后端，不收集数据。只在你点击提问时发送当前页文字/截图到你配置的 AI 接口。请遵守微信读书的服务条款，仅用于个人阅读辅助。</string>
 
-    <string name="bubble_label">伴读</string>
+    <string name="update_dialog_title">发现新版本 %1$s</string>
+    <string name="update_dialog_message">当前版本 %1$s，新版本 %2$s</string>
+    <string name="update_dialog_download">下载并安装</string>
+    <string name="update_dialog_later">稍后</string>
+    <string name="update_downloading">正在下载更新… %1$d%%</string>
+    <string name="update_download_failed">下载失败</string>
+    <string name="update_verify_failed">安装包校验失败</string>
+    <string name="update_need_permission_title">需要允许安装未知应用</string>
+    <string name="update_need_permission_message">请允许伴读安装未知应用，然后回到 伴读 → 设置 → 关于，点「安装已下载的更新」。</string>
+    <string name="update_open_permission">去设置</string>
+    <string name="update_install_started">正在打开安装程序</string>
+    <string name="update_install_failed">安装失败</string>
+    <string name="update_downloaded_hint">已下载，授权后可在设置里点安装更新。</string>
+    <string name="update_downloaded_background">已下载，可在设置页安装</string>
+    <string name="update_download_cancelled">已取消更新下载</string>
+    <string name="update_failed_background">更新失败：%1$s</string>
+
     <string name="notification_channel">悬浮球</string>
     <string name="notification_title">伴读正在运行</string>
     <string name="notification_text">点悬浮球向伴读提问</string>

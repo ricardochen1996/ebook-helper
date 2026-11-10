@@ -38,6 +38,20 @@ class SettingsStore(context: Context) {
         get() = prefs.getString(KEY_EXTRA_PROMPT, "") ?: ""
         set(value) = prefs.edit().putString(KEY_EXTRA_PROMPT, value).apply()
 
+    var autoCheckUpdates: Boolean
+        // 默认自动检查：检查只拉取几 KB 的元数据，不会打断阅读
+        get() = prefs.getBoolean(KEY_AUTO_CHECK_UPDATES, true)
+        set(value) = prefs.edit().putBoolean(KEY_AUTO_CHECK_UPDATES, value).apply()
+
+    var lastUpdateCheckAt: Long
+        get() = prefs.getLong(KEY_LAST_UPDATE_CHECK_AT, 0L)
+        set(value) = prefs.edit().putLong(KEY_LAST_UPDATE_CHECK_AT, value).apply()
+
+    // 失败后只等 1 小时就重试，避免一次断网让自动检查停摆 24 小时
+    var lastUpdateCheckFailed: Boolean
+        get() = prefs.getBoolean(KEY_LAST_UPDATE_CHECK_FAILED, false)
+        set(value) = prefs.edit().putBoolean(KEY_LAST_UPDATE_CHECK_FAILED, value).apply()
+
     var lastBookTitle: String
         get() = prefs.getString(KEY_LAST_BOOK_TITLE, "") ?: ""
         set(value) = prefs.edit().putString(KEY_LAST_BOOK_TITLE, value).apply()
@@ -59,6 +73,9 @@ class SettingsStore(context: Context) {
         private const val KEY_TTS_RATE = "tts_rate"
         private const val KEY_AUTO_TITLE = "auto_title"
         private const val KEY_EXTRA_PROMPT = "extra_prompt"
+        private const val KEY_AUTO_CHECK_UPDATES = "auto_check_updates"
+        private const val KEY_LAST_UPDATE_CHECK_AT = "last_update_check_at"
+        private const val KEY_LAST_UPDATE_CHECK_FAILED = "last_update_check_failed"
         private const val KEY_LAST_BOOK_TITLE = "last_book_title"
         private const val KEY_MAX_TOKENS = "max_tokens"
         private const val KEY_TEMPERATURE = "temperature"

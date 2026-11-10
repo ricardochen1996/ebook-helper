@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- 与正式包并存时便于区分：应用名、悬浮球、通知都带 debug 标记 -->
+    <!-- 与正式包并存时便于区分：应用名和通知都带 debug 标记；
+         悬浮球用反色 logo（黑底白标）区分。 -->
     <string name="app_name">伴读 (debug)</string>
-    <string name="bubble_label">伴读D</string>
     <string name="notification_channel">悬浮球（调试）</string>
     <string name="notification_title">伴读（调试）正在运行</string>
     <string name="notification_text">调试包：点悬浮球向伴读提问</string>

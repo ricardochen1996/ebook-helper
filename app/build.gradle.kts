@@ -21,8 +21,8 @@ android {
         applicationId = "com.booxai.helper"
         minSdk = 30
         targetSdk = 30
-        versionCode = 4
-        versionName = "1.0.0"
+        versionCode = 5
+        versionName = "1.1.0"
     }
 
     signingConfigs {
@@ -97,4 +97,6 @@ dependencies {
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("com.google.code.gson:gson:2.11.0")
     implementation("com.google.zxing:core:3.5.3")
+
+    testImplementation("junit:junit:4.13.2")
 }

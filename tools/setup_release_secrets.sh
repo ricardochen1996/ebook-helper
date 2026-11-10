@@ -49,6 +49,26 @@ for pair in "STORE_PASSWORD:$STORE_PASSWORD" "KEY_ALIAS:$KEY_ALIAS" "KEY_PASSWOR
     fi
 done
 
+# 已发布 v1.0.0 的签名证书。用旧 key 覆盖 Secrets 会让已安装用户无法覆盖更新。
+EXPECTED_CERT="${EXPECTED_CERT:-1b13719e3ebc5e4e86f08a69250681d7f52cefbea19cef928d22616f9adec8ed}"
+if command -v keytool >/dev/null 2>&1 && command -v openssl >/dev/null 2>&1; then
+    CERT="$(keytool -exportcert -keystore "$KEYSTORE" -storepass "$STORE_PASSWORD" \
+        -alias "$KEY_ALIAS" -rfc 2>/dev/null \
+        | openssl x509 -fingerprint -sha256 -noout 2>/dev/null \
+        | sed 's/^.*=//' | tr -d ':' | tr 'A-F' 'a-f' || true)"
+    if [ -n "$CERT" ] && [ "$CERT" != "$EXPECTED_CERT" ]; then
+        echo "错误: keystore 证书 SHA-256 与已发布版本不一致。"
+        echo "  当前: $CERT"
+        echo "  期望: $EXPECTED_CERT"
+        echo "用它覆盖 CI Secrets 会让已安装用户无法覆盖更新（只能卸载重装并丢失会话）。"
+        echo "如确认要更换签名，设置 EXPECTED_CERT=$CERT 后重试。"
+        exit 1
+    fi
+    if [ -z "$CERT" ]; then
+        echo "警告: 无法读取 keystore 证书指纹，跳过签名一致性校验。"
+    fi
+fi
+
 echo "正在写入 GitHub Secrets 到 ${REPO}（值不会打印）..."
 base64 < "$KEYSTORE" | tr -d '\n' | gh secret set ANDROID_KEYSTORE_BASE64 --repo "$REPO"
 printf '%s' "$STORE_PASSWORD" | gh secret set ANDROID_KEYSTORE_PASSWORD --repo "$REPO"

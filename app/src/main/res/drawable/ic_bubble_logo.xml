@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  悬浮球标记「书页成话」：翻开的书，右上页角翻起，书脊是一道负空间。
+  单色路径；正式包为白底黑标，debug 包用同名资源覆盖成黑底白标。
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="48"
+    android:viewportHeight="48">
+    <path
+        android:fillColor="#FF111111"
+        android:pathData="M 6.53 29.57 L 6.53 17.18 Q 6.53 15.55 8.16 15.65 C 12.38 16.13 17.57 16.9 21.79 17.66 L 21.98 32.74 Q 23.95 35.04 25.92 32.74 L 25.82 17.66 C 28.42 17.18 30.72 16.7 32.64 16.22 C 33.7 13.92 35.71 12.19 36.48 10.75 C 37.92 12.96 39.74 15.26 41.38 17.66 L 41.38 29.57 L 24 37.63 Z" />
+</vector>

@@ -21,6 +21,7 @@
 - **Voice input**: press and hold to talk, reusing the BOOX system ASR (Alibaba Cloud). No ASR key needed.
 - **Local archive**: Room database, archived by book → session → message, with history browsing. Each answer shows its question plus the original page text and screenshot from that moment, and individual sessions or whole books can be deleted.
 - **QR setup**: the e-reader shows a QR code, and your phone on the same Wi-Fi fills in the API config, so you don't have to type on the e-ink screen.
+- **Auto-update**: checks GitHub Releases once a day, or manually from Settings; downloads the APK and hands it to the system installer.
 - **Privacy**: no backend, no analytics; the API key is encrypted with Android Keystore.
 
 ## Screenshots
@@ -33,7 +34,7 @@
 
 ## Quick start
 
-1. Install the APK (the release build is recommended; the debug build `com.booxai.helper.debug` can be installed alongside it and has a black "伴读D" floating ball).
+1. Install the APK (the release build is recommended; the debug build `com.booxai.helper.debug` can be installed alongside it and has an inverted black floating ball with a white mark).
 2. Open Bandu and grant "Display over other apps".
 3. System Settings → Accessibility → enable "Bandu Reading Assistant".
 4. Configure the API:
@@ -84,6 +85,8 @@ Release build (requires signing files):
 ./gradlew :app:assembleRelease
 ```
 
+> A locally built release APK uses the local keystore and is for local testing only; official releases are built by CI. The local `keystore/readask-release.jks` is the old key and cannot upgrade an installed 1.0.0.
+
 ### GitHub Actions
 
 - Pushing to `main` builds the debug APK automatically: Actions artifact `reader-helper-debug`, also pushed to the `build-artifacts` branch.
@@ -101,7 +104,7 @@ tools/setup_release_secrets.sh /path/to/readask-release.jks /path/to/keystore.pr
 
 After a successful release build, a **GitHub Release** is created or updated automatically (tag `v<version>`), and these are kept:
 
-- GitHub Release asset: `reader-helper-release.apk`
+- GitHub Release assets: `reader-helper-release.apk` and `update.json` (used by the in-app updater; no need to download it manually)
 - Actions artifact: `reader-helper-release`
 - `release-artifacts` branch
 
@@ -109,14 +112,15 @@ Release downloads: <https://github.com/ricardochen1996/ebook-helper/releases>
 
 ## Signing
 
-- The release APK is signed with `keystore/readask-release.jks` (password in `keystore.properties`).
-- Current certificate SHA-256:
+- Release builds are signed by CI with the keystore stored in repository Secrets. Current certificate SHA-256:
 
   ```
   1b13719e3ebc5e4e86f08a69250681d7f52cefbea19cef928d22616f9adec8ed
   ```
 
-- The signing key was regenerated on 2026-11-09 (the old keystore was lost). Back up the keystore and properties; if lost again, upgrading still requires uninstalling and reinstalling.
+- The signing key was regenerated on 2026-11-09 (the old keystore was lost). The local `keystore/readask-release.jks` is the pre-rotation key: do **not** use it with `tools/setup_release_secrets.sh`, or users on 1.0.0 will be unable to install the update (they would have to uninstall and lose their sessions).
+- `android-release.yml` asserts that the CI-built APK has the certificate above and aborts the release on a mismatch.
+- Back up the CI keystore and password; if lost again, upgrading still requires uninstalling and reinstalling.
 
 ## FAQ
 
@@ -144,6 +148,13 @@ Switch to a vision-capable model, or uncheck "Attach current page screenshot"; t
 **Accessibility stops working after an APK update?**  
 Android revokes accessibility authorization after an over-the-top install; enable it again.
 
+## Updates
+
+- 1.0.0 and earlier have no updater module, so install 1.1.0 manually once; after that you can check for and install later versions in the app.
+- The app checks GitHub Releases once a day on launch, or manually via Settings → About → Check for updates.
+- When a new version is found the app shows a prompt; after you confirm, it downloads the APK and opens the system installer. The first time, allow "install unknown apps" for Bandu in system settings. Automatic checks can be turned off under Settings → About.
+- Downloads are verified with SHA-256. Updates keep your books and sessions, but you need to re-enable the accessibility service after installing.
+
 ## Privacy
 
 - The current page text/screenshot is sent to your configured AI endpoint only when you tap "Ask"; the app has no backend and collects no data.
@@ -170,4 +181,4 @@ adb reverse tcp:8765 tcp:8765
 adb install -r app/build/outputs/apk/debug/app-debug.apk
 ```
 
-The debug build `com.booxai.helper.debug` can use `DebugConfigActivity` over adb to write config, open the QR setup page, and test text extraction. Its floating ball is black with "伴读D" and its notification is marked "debug", so it is easy to tell apart from the release build.
+The debug build `com.booxai.helper.debug` can use `DebugConfigActivity` over adb to write config, open the QR setup page, and test text extraction. Its floating ball is inverted (black with a white mark) and its notification is marked "debug", so it is easy to tell apart from the release build.

@@ -16,6 +16,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.booxai.helper.App
+import com.booxai.helper.BuildConfig
 import com.booxai.helper.R
 import com.booxai.helper.accessibility.AccessibilityUtil
 import com.booxai.helper.accessibility.ReadingState
@@ -25,6 +26,9 @@ import com.booxai.helper.ai.ProviderPresets
 import com.booxai.helper.data.SecretStore
 import com.booxai.helper.databinding.ActivitySettingsBinding
 import com.booxai.helper.speech.TtsController
+import com.booxai.helper.update.InstallResult
+import com.booxai.helper.update.UpdateCheckResult
+import com.booxai.helper.update.UpdateDialogs
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -34,6 +38,7 @@ class SettingsActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivitySettingsBinding
     private var suppressPreset = false
+    private var checkingUpdate = false
     private val protocolValues = listOf("openai", "anthropic")
 
     private val qrConfigLauncher =
@@ -170,6 +175,13 @@ class SettingsActivity : AppCompatActivity() {
             }
         }
 
+        binding.switchAutoUpdate.setOnCheckedChangeListener { _, checked ->
+            App.settings.autoCheckUpdates = checked
+        }
+        binding.btnCheckUpdate.setOnClickListener { checkForUpdates() }
+        binding.btnInstallUpdate.setOnClickListener { installCachedUpdate() }
+        refreshUpdateUi()
+
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 App.tts.state.collect { updateTtsStatus(it) }
@@ -181,6 +193,104 @@ class SettingsActivity : AppCompatActivity() {
         super.onResume()
         updatePermissionStatus()
         updateKeyStatus()
+        refreshUpdateUi()
+    }
+
+    private fun refreshUpdateUi() {
+        val packageInfo = packageManager.getPackageInfo(packageName, 0)
+        binding.tvVersion.text = getString(
+            R.string.settings_version,
+            BuildConfig.VERSION_NAME,
+            packageInfo.longVersionCode,
+        )
+        // 版本号由 tvVersion 单独展示，关于文字不再重复
+        binding.tvAbout.text = getString(R.string.settings_about_text)
+        binding.switchAutoUpdate.isChecked = App.settings.autoCheckUpdates
+        binding.btnInstallUpdate.isEnabled = true
+        // 枚举缓存包要读磁盘，放到 IO 线程，避免主线程 StrictMode 告警
+        lifecycleScope.launch {
+            val hasCached = withContext(Dispatchers.IO) { App.updates.cachedApk() != null }
+            binding.btnInstallUpdate.visibility = if (hasCached) View.VISIBLE else View.GONE
+        }
+        when {
+            // 调试包没有稳定的发布签名/版本，检查更新没有意义
+            BuildConfig.DEBUG -> {
+                binding.btnCheckUpdate.isEnabled = false
+                binding.btnCheckUpdate.text = getString(R.string.settings_check_update)
+                binding.tvUpdateStatus.visibility = View.VISIBLE
+                binding.tvUpdateStatus.text = getString(R.string.settings_update_debug)
+            }
+            checkingUpdate -> {
+                binding.btnCheckUpdate.isEnabled = false
+                binding.btnCheckUpdate.text = getString(R.string.settings_update_checking)
+                binding.tvUpdateStatus.visibility = View.VISIBLE
+                binding.tvUpdateStatus.text = getString(R.string.settings_update_checking)
+            }
+            else -> {
+                binding.btnCheckUpdate.isEnabled = true
+                binding.btnCheckUpdate.text = getString(R.string.settings_check_update)
+                binding.tvUpdateStatus.visibility = View.GONE
+            }
+        }
+    }
+
+    private fun checkForUpdates() {
+        if (BuildConfig.DEBUG) {
+            binding.tvUpdateStatus.visibility = View.VISIBLE
+            binding.tvUpdateStatus.text = getString(R.string.settings_update_debug)
+            return
+        }
+        if (checkingUpdate) return
+        checkingUpdate = true
+        binding.btnCheckUpdate.isEnabled = false
+        binding.btnCheckUpdate.text = getString(R.string.settings_update_checking)
+        binding.tvUpdateStatus.visibility = View.VISIBLE
+        binding.tvUpdateStatus.text = getString(R.string.settings_update_checking)
+        lifecycleScope.launch {
+            val result = withContext(Dispatchers.IO) { App.updates.check() }
+            // 手动检查也让自动检查的窗口重新计时；失败只退避 1 小时
+            App.settings.lastUpdateCheckAt = System.currentTimeMillis()
+            App.settings.lastUpdateCheckFailed = result is UpdateCheckResult.Failed
+            checkingUpdate = false
+            binding.btnCheckUpdate.isEnabled = true
+            binding.btnCheckUpdate.text = getString(R.string.settings_check_update)
+            when (result) {
+                is UpdateCheckResult.Available -> {
+                    binding.tvUpdateStatus.text =
+                        getString(R.string.settings_update_found, result.info.versionName)
+                    UpdateDialogs.showAvailable(this@SettingsActivity, result.info) {
+                        refreshUpdateUi()
+                    }
+                }
+                UpdateCheckResult.UpToDate -> {
+                    binding.tvUpdateStatus.visibility = View.GONE
+                    UpdateDialogs.showLatest(this@SettingsActivity)
+                }
+                is UpdateCheckResult.Failed -> {
+                    binding.tvUpdateStatus.visibility = View.VISIBLE
+                    binding.tvUpdateStatus.text =
+                        getString(R.string.settings_update_failed, result.message)
+                }
+            }
+        }
+    }
+
+    private fun installCachedUpdate() {
+        // 防重复点击；缓存枚举是磁盘 IO，不能放在主线程
+        binding.btnInstallUpdate.isEnabled = false
+        lifecycleScope.launch {
+            val apk = withContext(Dispatchers.IO) { App.updates.cachedApk() }
+            if (apk == null) {
+                // 文件可能已被系统清理，刷新后隐藏入口
+                binding.btnInstallUpdate.visibility = View.GONE
+                binding.btnInstallUpdate.isEnabled = true
+                return@launch
+            }
+            val result = withContext(Dispatchers.IO) { App.updates.install(apk) }
+            // 安装器已拉起时保持禁用直到 onResume；其它结果允许用户重试
+            binding.btnInstallUpdate.isEnabled = result !is InstallResult.Started
+            UpdateDialogs.handleInstallResult(this@SettingsActivity, result)
+        }
     }
 
     private fun saveConfig() {

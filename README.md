@@ -21,6 +21,7 @@
 - **语音提问**：按住说话，复用文石系统 ASR（阿里云），不需要 ASR Key。
 - **本地归档**：Room 数据库，按书 → 会话 → 消息归档，可回看；每条回答带对应问题和当时的书页原文/截图，支持删除单条会话或整本书。
 - **扫码配置**：电子书显示二维码，手机在同一 Wi-Fi 下填写 API 配置，不用在墨水屏上敲字。
+- **自动更新**：每天自动检查 GitHub Release，也可在设置里手动检查；下载后调用系统安装器覆盖安装。
 - **隐私**：无后端、无统计；API Key 用 Android Keystore 加密。
 
 ## 截图
@@ -33,7 +34,7 @@
 
 ## 快速开始
 
-1. 安装 APK（正式包优先；debug 包 `com.booxai.helper.debug` 可与正式包并存，悬浮球为黑底「伴读D」）。
+1. 安装 APK（正式包优先；debug 包 `com.booxai.helper.debug` 可与正式包并存，悬浮球为反色黑底白标）。
 2. 打开「伴读」，授予「显示在其他应用上层」。
 3. 系统设置 → 无障碍 → 开启「伴读阅读助手」。
 4. 配置 API：
@@ -84,6 +85,8 @@ export ANDROID_HOME=$HOME/Library/Android/sdk
 ./gradlew :app:assembleRelease
 ```
 
+> 本地构建的正式包使用本地 keystore 签名，只能自测；正式发布以 CI 为准。本地 `keystore/readask-release.jks` 是旧 key，无法覆盖已安装的 1.0.0。
+
 ### GitHub Actions
 
 - 推送 `main` 自动构建 debug APK：Actions artifact `reader-helper-debug`，同时推送到 `build-artifacts` 分支。
@@ -93,7 +96,7 @@ export ANDROID_HOME=$HOME/Library/Android/sdk
   - `ANDROID_KEY_ALIAS`
   - `ANDROID_KEY_PASSWORD`
 
-本机已有 keystore 和 properties 时，一条命令写入（值不会打印）：
+本机已有 keystore 和 properties 时，一条命令写入（值不会打印；脚本会校验证书指纹，旧 key 会被拒绝）：
 
 ```bash
 tools/setup_release_secrets.sh /path/to/readask-release.jks /path/to/keystore.properties
@@ -101,7 +104,7 @@ tools/setup_release_secrets.sh /path/to/readask-release.jks /path/to/keystore.pr
 
 正式包构建成功后会自动创建/更新 **GitHub Release**（tag `v版本号`），同时保留：
 
-- GitHub Release asset：`reader-helper-release.apk`
+- GitHub Release asset：`reader-helper-release.apk`、`update.json`（App 更新检查用，无需手动下载）
 - Actions artifact：`reader-helper-release`
 - `release-artifacts` 分支
 
@@ -109,14 +112,15 @@ Release 下载页：<https://github.com/ricardochen1996/ebook-helper/releases>
 
 ## 签名
 
-- Release APK 使用 `keystore/readask-release.jks` 签名（密码在 `keystore.properties`）。
-- 当前证书 SHA-256：
+- 正式包由 CI 使用仓库 Secrets 中的 keystore 签名；当前证书 SHA-256：
 
   ```
   1b13719e3ebc5e4e86f08a69250681d7f52cefbea19cef928d22616f9adec8ed
   ```
 
-- 2026-11-09 重新生成签名（旧 keystore 丢失）。请备份 keystore 和 properties；丢失后再次升级仍需卸载重装。
+- 2026-11-09 重新生成过签名（旧 keystore 丢失）。本地 `keystore/readask-release.jks` 是重新生成前的旧 key，**不要**用它运行 `tools/setup_release_secrets.sh` 覆盖 CI Secrets，否则已安装 1.0.0 的用户无法覆盖安装（只能卸载重装并丢失会话）。
+- `android-release.yml` 会校验 CI 产物的证书指纹必须等于上面的值，不匹配就中止发布。
+- 请备份 CI 使用的 keystore 和密码；丢失后再次升级仍需卸载重装。
 
 ## 常见问题
 
@@ -144,6 +148,13 @@ Release 下载页：<https://github.com/ricardochen1996/ebook-helper/releases>
 **更新 APK 后无障碍失效？**  
 Android 会在覆盖安装后撤销无障碍授权，重新开启一次即可。
 
+## 更新
+
+- 1.0.0 及更早版本没有更新模块，需要手动安装一次 1.1.0；之后即可在 App 内检查并安装后续版本。
+- 打开 App 时每天自动检查一次 GitHub Release；也可以在「设置 → 关于 → 检查更新」手动检查。
+- 发现新版本后弹窗提示，确认后下载 APK 并调用系统安装器完成覆盖安装。首次使用需要在系统设置里允许「伴读」安装未知应用；自动检查可在「设置 → 关于」关闭。
+- 下载包会校验 SHA-256；更新不会清除书籍和会话，但覆盖安装后需要重新开启一次无障碍服务。
+
 ## 隐私
 
 - 只在你点「提问」时发送当前页文字/截图到你配置的 AI 接口；App 没有后端，不收集数据。
@@ -170,4 +181,4 @@ adb reverse tcp:8765 tcp:8765
 adb install -r app/build/outputs/apk/debug/app-debug.apk
 ```
 
-debug 包 `com.booxai.helper.debug` 可用 `DebugConfigActivity` 通过 adb 写入配置、打开扫码配置页、测试取词。debug 包的悬浮球是黑底「伴读D」，通知栏也带「调试」标记，方便和正式包同时安装时区分。
+debug 包 `com.booxai.helper.debug` 可用 `DebugConfigActivity` 通过 adb 写入配置、打开扫码配置页、测试取词。debug 包的悬浮球是反色（黑底白标），通知栏也带「调试」标记，方便和正式包同时安装时区分。

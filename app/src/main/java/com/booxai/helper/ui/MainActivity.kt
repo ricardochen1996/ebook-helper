@@ -16,18 +16,28 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.booxai.helper.App
+import com.booxai.helper.BuildConfig
 import com.booxai.helper.R
 import com.booxai.helper.accessibility.AccessibilityUtil
 import com.booxai.helper.accessibility.ReadingState
 import com.booxai.helper.data.BookEntity
 import com.booxai.helper.databinding.ActivityMainBinding
 import com.booxai.helper.floating.FloatingBubbleService
+import com.booxai.helper.update.UpdateCheckResult
+import com.booxai.helper.update.UpdateDialogs
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+
+// 自动检查间隔：成功后 24 小时内不再请求；失败后 1 小时重试，避免一次断网停摆一天
+private const val UPDATE_CHECK_INTERVAL_MS = 24L * 60 * 60 * 1000
+private const val UPDATE_FAILURE_RETRY_MS = 60L * 60 * 1000
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
     private var apiConfigured = false
+    private var autoUpdateInFlight = false
     private val statusHandler = Handler(Looper.getMainLooper())
     private val statusRunnable = object : Runnable {
         override fun run() {
@@ -94,6 +104,52 @@ class MainActivity : AppCompatActivity() {
         refreshStatus()
         statusHandler.removeCallbacks(statusRunnable)
         statusHandler.postDelayed(statusRunnable, 1500L)
+        autoCheckUpdates()
+    }
+
+    private fun autoCheckUpdates() {
+        // 调试包不是正式签名版本，更新提示只会干扰联调
+        if (BuildConfig.DEBUG) return
+        if (!App.settings.autoCheckUpdates) return
+        val interval = if (App.settings.lastUpdateCheckFailed) {
+            UPDATE_FAILURE_RETRY_MS
+        } else {
+            UPDATE_CHECK_INTERVAL_MS
+        }
+        if (System.currentTimeMillis() - App.settings.lastUpdateCheckAt < interval) {
+            return
+        }
+        // 防止一次检查还没结束时 onResume 又发起一次；节流交给时间戳
+        if (autoUpdateInFlight) return
+        autoUpdateInFlight = true
+        lifecycleScope.launch {
+            try {
+                // 检查在后台线程进行，不阻塞首页渲染
+                val result = withContext(Dispatchers.IO) { App.updates.check() }
+                val now = System.currentTimeMillis()
+                when (result) {
+                    is UpdateCheckResult.Available -> {
+                        App.settings.lastUpdateCheckFailed = false
+                        // 不在前台时先不推进时间戳：下次 onResume 再检查并提示，
+                        // 避免这次更新提示被静默吞掉。
+                        if (lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
+                            App.settings.lastUpdateCheckAt = now
+                            UpdateDialogs.showAvailable(this@MainActivity, result.info)
+                        }
+                    }
+                    UpdateCheckResult.UpToDate -> {
+                        App.settings.lastUpdateCheckAt = now
+                        App.settings.lastUpdateCheckFailed = false
+                    }
+                    is UpdateCheckResult.Failed -> {
+                        App.settings.lastUpdateCheckAt = now
+                        App.settings.lastUpdateCheckFailed = true
+                    }
+                }
+            } finally {
+                autoUpdateInFlight = false
+            }
+        }
     }
 
     override fun onPause() {

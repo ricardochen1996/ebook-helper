@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="oval">
+    <!-- 白底黑标与 App 的纸墨 UI 一致；2dp 黑边保证在浅色页面上有清晰轮廓 -->
     <solid android:color="@color/paper" />
     <stroke android:width="2dp" android:color="@color/ink" />
 </shape>

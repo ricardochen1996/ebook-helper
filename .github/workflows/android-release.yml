@@ -67,15 +67,22 @@ jobs:
             echo "keyPassword=$KEY_PASSWORD"
           } > keystore.properties
 
-      - name: Build release APK
+      - name: Run unit tests and build release APK
         run: |
           chmod +x gradlew
-          ./gradlew :app:assembleRelease --no-daemon --stacktrace
+          ./gradlew :app:testDebugUnitTest :app:assembleRelease --no-daemon --stacktrace
 
       - name: Verify signature
         run: |
-          "$ANDROID_HOME/build-tools/34.0.0/apksigner" verify --print-certs \
-            app/build/outputs/apk/release/app-release.apk
+          APKSIGNER="$ANDROID_HOME/build-tools/34.0.0/apksigner"
+          "$APKSIGNER" verify --print-certs app/build/outputs/apk/release/app-release.apk
+          CERT=$("$APKSIGNER" verify --print-certs app/build/outputs/apk/release/app-release.apk \
+            | sed -n 's/.*Signer #1 certificate SHA-256 digest: //p' | head -n1)
+          EXPECTED="1b13719e3ebc5e4e86f08a69250681d7f52cefbea19cef928d22616f9adec8ed"
+          if [ "$CERT" != "$EXPECTED" ]; then
+            echo "::error::签名证书不一致（$CERT）。已安装用户将无法覆盖更新；请检查 ANDROID_KEYSTORE_BASE64 是否仍是 v1.0.0 使用的证书。"
+            exit 1
+          fi
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
@@ -89,16 +96,33 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          VERSION=$(grep -oP 'versionName = "\K[^"]+' app/build.gradle.kts | head -n1)
+          VERSION=$(sed -n 's/.*versionName = "\(.*\)".*/\1/p' app/build.gradle.kts | head -n1)
+          VERSION_CODE=$(sed -n 's/.*versionCode = \([0-9][0-9]*\).*/\1/p' app/build.gradle.kts | head -n1)
+          if [ -z "$VERSION" ] || [ -z "$VERSION_CODE" ]; then
+            echo "::error::无法从 app/build.gradle.kts 读取 versionName/versionCode"
+            exit 1
+          fi
           TAG="v${VERSION}"
           ASSET="app/build/outputs/apk/release/app-release.apk"
           NAMED_ASSET="/tmp/reader-helper-release.apk"
           cp "$ASSET" "$NAMED_ASSET"
+          SHA256=$(sha256sum "$NAMED_ASSET" | awk '{print $1}')
+          SIZE=$(stat -c%s "$NAMED_ASSET")
+          # 供 App 内更新检查读取：小体积元数据，带校验和与大小。
+          # 用 jq 生成并校验，避免版本名等字段破坏 JSON。
+          jq -n \
+            --arg version "$VERSION" \
+            --argjson code "$VERSION_CODE" \
+            --arg sha "$SHA256" \
+            --argjson size "$SIZE" \
+            '{versionName:$version,versionCode:$code,apk:"reader-helper-release.apk",sha256:$sha,size:$size}' \
+            > /tmp/update.json
+          jq empty /tmp/update.json
           if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh release upload "$TAG" "$NAMED_ASSET" \
+            gh release upload "$TAG" "$NAMED_ASSET" /tmp/update.json \
               --clobber --repo "$GITHUB_REPOSITORY"
           else
-            gh release create "$TAG" "$NAMED_ASSET" \
+            gh release create "$TAG" "$NAMED_ASSET" /tmp/update.json \
               --repo "$GITHUB_REPOSITORY" \
               --target "$GITHUB_SHA" \
               --title "伴读 ${VERSION}" \

@@ -19,7 +19,7 @@ import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
-import android.widget.TextView
+import android.widget.ImageView
 import android.widget.Toast
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
@@ -38,7 +38,7 @@ class FloatingBubbleService : Service() {
     private val prefs by lazy { getSharedPreferences("bubble", Context.MODE_PRIVATE) }
     private val mainHandler = Handler(Looper.getMainLooper())
 
-    private var bubbleView: TextView? = null
+    private var bubbleView: ImageView? = null
     private var params: WindowManager.LayoutParams? = null
     private var longPressRunnable: Runnable? = null
     private var lastNotificationMode: NotificationMode? = null
@@ -186,11 +186,11 @@ class FloatingBubbleService : Service() {
         val defaultX = (bounds.width() - size - dp(10)).coerceAtLeast(dp(10))
         val defaultY = (bounds.height() / 2).coerceAtLeast(dp(80))
 
-        val view = TextView(this).apply {
-            text = getString(R.string.bubble_label)
-            textSize = 13f
-            setTextColor(ContextCompat.getColor(this@FloatingBubbleService, R.color.bubble_text))
-            gravity = Gravity.CENTER
+        val view = ImageView(this).apply {
+            setImageResource(R.drawable.ic_bubble_logo)
+            scaleType = ImageView.ScaleType.FIT_CENTER
+            // 56dp 圆内留 8dp 边距，图形约 29dp 宽，既不贴边也不显小
+            setPadding(dp(8), dp(8), dp(8), dp(8))
             background = ContextCompat.getDrawable(this@FloatingBubbleService, R.drawable.bg_bubble)
             isClickable = true
             isFocusable = false

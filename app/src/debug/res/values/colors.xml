@@ -1,5 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <!-- 悬浮球在 debug 包里是黑底白字，和正式包的白底黑字一眼区分 -->
-    <color name="bubble_text">#FFFFFFFF</color>
-</resources>
